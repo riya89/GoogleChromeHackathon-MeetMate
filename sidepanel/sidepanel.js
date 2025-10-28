@@ -1,4 +1,4 @@
-/* global chrome */
+/* global chrome, LanguageModel, Summarizer, Writer */
 
 // ===== DOM ELEMENTS =====
 const status = document.getElementById("status");
@@ -239,21 +239,26 @@ function saveScreenshots() {
 }
 
 // Load saved screenshots
-chrome.storage.local.get(["screenshots"], (result) => {
+chrome.storage.local.get(["screenshots"], async (result) => {
   if (result.screenshots && result.screenshots.length > 0) {
-    result.screenshots.forEach(async (saved, index) => {
-      const res = await fetch(saved.dataUri);
-      const blob = await res.blob();
-      screenshots.push({ dataUri: saved.dataUri, blob, analysis: saved.analysis });
+    for (let index = 0; index < result.screenshots.length; index++) {
+      const saved = result.screenshots[index];
+      try {
+        const res = await fetch(saved.dataUri);
+        const blob = await res.blob();
+        screenshots.push({ dataUri: saved.dataUri, blob, analysis: saved.analysis });
 
-      const thumb = document.createElement("img");
-      thumb.src = saved.dataUri;
-      thumb.dataset.index = index;
-      thumb.title = "Click to analyze";
-      gallery.appendChild(thumb);
+        const thumb = document.createElement("img");
+        thumb.src = saved.dataUri;
+        thumb.dataset.index = index;
+        thumb.title = "Click to analyze";
+        gallery.appendChild(thumb);
 
-      thumb.addEventListener("click", () => openModal(index));
-    });
+        thumb.addEventListener("click", () => openModal(index));
+      } catch (err) {
+        console.error("Failed to load screenshot:", err);
+      }
+    }
   }
 });
 
@@ -404,6 +409,69 @@ The email should include:
     console.error(err);
     emailOutput.textContent = "⚠️ Failed to draft email. Try again.";
     updateStatus("❌ Email draft failed", "error");
+  }
+});
+
+// ===== FEATURE 5: COPY TO CLIPBOARD =====
+const copyBtn = document.getElementById("copyBtn");
+copyBtn.addEventListener("click", async () => {
+  const notes = notesField.value.trim();
+  const actionItems = outputDiv.textContent.trim();
+  const summary = summaryOutput.textContent.trim();
+  const email = emailOutput.textContent.trim();
+
+  let copyText = "# MeetMate - Meeting Notes\n\n";
+
+  if (notes) {
+    copyText += `## Notes:\n${notes}\n\n`;
+  }
+
+  if (actionItems && !actionItems.includes("⚠️")) {
+    copyText += `## Action Items:\n${actionItems}\n\n`;
+  }
+
+  if (summary && !summary.includes("⚠️")) {
+    copyText += `## Summary:\n${summary}\n\n`;
+  }
+
+  if (email && !email.includes("⚠️")) {
+    copyText += `## Follow-up Email:\n${email}\n\n`;
+  }
+
+  if (screenshots.length > 0) {
+    copyText += `## Screenshots: ${screenshots.length} captured\n`;
+  }
+
+  try {
+    await navigator.clipboard.writeText(copyText);
+    updateStatus("✅ Copied to clipboard!", "success");
+    setTimeout(() => updateStatus("✅ AI ready!", "success"), 2000);
+  } catch (err) {
+    console.error(err);
+    updateStatus("❌ Failed to copy", "error");
+  }
+});
+
+// ===== FEATURE 6: CLEAR ALL DATA =====
+const clearBtn = document.getElementById("clearBtn");
+clearBtn.addEventListener("click", () => {
+  if (confirm("Are you sure you want to clear all meeting data? This cannot be undone.")) {
+    // Clear UI
+    notesField.value = "";
+    outputDiv.textContent = "";
+    summaryOutput.textContent = "";
+    emailOutput.textContent = "";
+    gallery.innerHTML = "";
+    emailDraftBtn.style.display = "none";
+
+    // Clear state
+    screenshots.length = 0;
+    meetingNotes = "";
+
+    // Clear storage
+    chrome.storage.local.clear(() => {
+      updateStatus("✅ All data cleared", "success");
+    });
   }
 });
 
