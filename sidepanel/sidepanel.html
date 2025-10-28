@@ -1,194 +1,78 @@
-<!-- <!doctype html>
-<html>
-  <head>
-    <link rel="stylesheet" type="text/css" href="index.css" />
-  </head>
-  <body>
-    <textarea
-      id="input-prompt"
-      placeholder='Type something, e.g. "Write a haiku about Chrome Extensions"'
-      cols="30"
-      rows="5"
-    ></textarea>
-    <div>
-      <input
-        type="range"
-        id="temperature"
-        name="temperature"
-        min="0"
-        max="2"
-        step="0.01"
-      />
-      <label for="temperature"
-        >Temperature: <span id="label-temperature"></span
-      ></label>
-    </div>
-    <div>
-      <input type="range" id="top-k" name="top-k" min="1" max="8" step="1" />
-      <label for="top-k">Top-k: <span id="label-top-k"></span></label>
-    </div>
-    <button id="button-prompt" class="primary" disabled>Run</button>
-    <button id="button-reset" class="secondary" disabled>Reset</button>
-    <div id="response" class="text" hidden></div>
-    <div id="loading" class="text" hidden><span class="blink">...</span></div>
-    <div id="error" class="text" hidden></div>
-    <script src="index.js" type="module"></script>
-  </body>
-</html> -->
-<!-- <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>MeetMate</title>
-  </head>
-  <body>
-    <h2>🧠 MeetMate - AI Meeting Assistant</h2>
-
-    <section id="feature1">
-      <h3>Feature 1: Extract Actionable Items</h3>
-      <textarea
-        id="notes"
-        rows="4"
-        placeholder="Paste or type your meeting notes here..."
-      ></textarea>
-      <br />
-      <button id="extractBtn">Extract Actionable Items</button>
-      <div id="output" style="white-space: pre-wrap; margin-top: 8px;"></div>
-    </section>
-
-    <hr />
-
-    <section id="feature2">
-      <h3>Feature 2: Meeting Screenshot Analyzer</h3>
-      <button id="captureBtn">📸 Capture Screenshot</button>
-      <div id="gallery" style="margin-top: 10px;"></div>
-    </section>
-
-    <p id="status" style="margin-top: 10px;"></p>
-
-    <script type="module" src="sidepanel.js"></script>
-  </body>
-</html>
-
- -->
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>MeetMate</title>
-    <style>
-      #gallery img {
-        width: 160px;
-        margin: 6px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: transform 0.2s;
-      }
-      #gallery img:hover {
-        transform: scale(1.05);
-      }
-
-      #modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.8);
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        z-index: 9999;
-      }
-
-      #modal img {
-        max-width: 90%;
-        max-height: 70%;
-        border-radius: 10px;
-      }
-
-      #modal p {
-        color: white;
-        max-width: 80%;
-        margin-top: 12px;
-        font-size: 16px;
-        line-height: 1.4;
-        white-space: pre-wrap;
-      }
-
-      #closeModal {
-        position: absolute;
-        top: 20px;
-        right: 30px;
-        font-size: 28px;
-        color: white;
-        cursor: pointer;
-      }
-    </style>
-  </head>
-  <body>
-    <h2>🧠 MeetMate - AI Meeting Assistant</h2>
-
-    <section id="feature1">
-      <h3>Feature 1: Extract Actionable Items</h3>
-      <textarea
-        id="notes"
-        rows="4"
-        placeholder="Paste or type your meeting notes here..."
-      ></textarea>
-      <br />
-      <button id="extractBtn">Extract Actionable Items</button>
-      <div id="output" style="white-space: pre-wrap; margin-top: 8px;"></div>
-    </section>
-
-    <hr />
-
-    <section id="feature2">
-      <h3>Feature 2: Meeting Screenshot Analyzer</h3>
-      <button id="captureBtn">📸 Capture Screenshot</button>
-      <div id="gallery" style="margin-top: 10px;"></div>
-    </section>
-
-    <p id="status" style="margin-top: 10px;"></p>
-
-    <div id="modal">
-      <span id="closeModal">&times;</span>
-      <img id="modalImage" />
-      <p id="modalAnalysis">Loading analysis...</p>
-    </div>
-
-    <script type="module" src="sidepanel.js"></script>
-  </body>
-</html>
-<!-- <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>MeetMate Side Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MeetMate - AI Meeting Co-Pilot</title>
     <link rel="stylesheet" href="sidepanel.css" />
   </head>
   <body>
-    <div class="toggle-container">
-      <button id="currentBtn" class="active">Current Meeting</button>
-      <button id="pastBtn">Past Meetings</button>
+    <!-- Header -->
+    <header class="header">
+      <h1>🧠 MeetMate</h1>
+      <p class="tagline">AI Meeting Co-Pilot</p>
+    </header>
+
+    <!-- Status Bar -->
+    <div id="status" class="status-bar">Initializing AI...</div>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+      <button id="tabNotes" class="tab-btn active">📝 Notes</button>
+      <button id="tabScreenshots" class="tab-btn">📸 Captures</button>
+      <button id="tabSummary" class="tab-btn">📋 Summary</button>
+    </nav>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- Notes Tab -->
+      <section id="contentNotes" class="tab-panel active">
+        <h3>Meeting Notes</h3>
+        <textarea
+          id="notes"
+          rows="6"
+          placeholder="Type your meeting notes here... AI will automatically detect action items!"
+        ></textarea>
+        <button id="extractBtn" class="btn btn-primary">
+          🤖 Extract Action Items
+        </button>
+        <div id="output" class="output-box"></div>
+      </section>
+
+      <!-- Screenshots Tab -->
+      <section id="contentScreenshots" class="tab-panel">
+        <h3>Captured Slides</h3>
+        <button id="captureBtn" class="btn btn-primary">
+          📸 Capture Screenshot
+        </button>
+        <p class="hint">Click thumbnails to view AI analysis</p>
+        <div id="gallery" class="gallery"></div>
+      </section>
+
+      <!-- Summary Tab -->
+      <section id="contentSummary" class="tab-panel">
+        <h3>Meeting Summary</h3>
+        <p class="hint">
+          Generate a comprehensive summary of your notes and captured slides
+        </p>
+        <button id="generateSummaryBtn" class="btn btn-primary">
+          ✨ Generate Summary
+        </button>
+        <div id="summaryOutput" class="output-box"></div>
+        <button id="emailDraftBtn" class="btn btn-secondary" style="display: none;">
+          📧 Draft Follow-up Email
+        </button>
+        <div id="emailOutput" class="output-box"></div>
+      </section>
     </div>
 
-
-    <div id="currentSection" class="section">
-      <h2>Current Meeting</h2>
-      <textarea id="notesInput" placeholder="Write meeting notes..."></textarea>
-      <button id="captureBtn">📸 Capture Screenshot</button>
-
-      <div id="screenshotsContainer"></div>
+    <!-- Modal for Screenshot Analysis -->
+    <div id="modal" class="modal">
+      <span id="closeModal" class="modal-close">&times;</span>
+      <img id="modalImage" class="modal-image" alt="Screenshot" />
+      <div id="modalAnalysis" class="modal-analysis">Loading analysis...</div>
     </div>
 
-
-    <div id="pastSection" class="section hidden">
-      <h2>Past Meetings</h2>
-      <div id="pastMeetingsList"></div>
-    </div>
-
-    <script src="sidepanel.js"></script>
+    <script type="module" src="sidepanel.js"></script>
   </body>
-</html> -->
+</html>

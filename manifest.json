@@ -1,17 +1,26 @@
 {
-  "name": "Chrome Prompt AI Demo",
-  "version": "0.2",
+  "name": "MeetMate - AI Meeting Co-Pilot",
+  "version": "1.0.0",
   "manifest_version": 3,
-  "description": "Try Chrome's built-in prompt API built with Gemini Nano.",
+  "description": "AI-powered meeting assistant using Chrome's Built-in AI. Capture slides, extract action items, and generate summaries - all locally on your device.",
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["sidePanel","tabs", "activeTab", "scripting", "notifications","storage"],
+  "permissions": [
+    "sidePanel",
+    "tabs",
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
   "minimum_chrome_version": "138",
   "side_panel": {
     "default_path": "sidepanel/sidepanel.html"
   },
-  "host_permissions": ["https://meet.google.com/*", "<all_urls>"],
+  "host_permissions": [
+    "https://meet.google.com/*",
+    "<all_urls>"
+  ],
   "action": {
     "default_icon": {
       "16": "images/icon16.png",
@@ -19,7 +28,12 @@
       "48": "images/icon48.png",
       "128": "images/icon128.png"
     },
-    "default_title": "Open Chat Interface"
+    "default_title": "MeetMate - AI Meeting Co-Pilot"
+  },
+  "icons": {
+    "16": "images/icon16.png",
+    "32": "images/icon32.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
   }
 }
-
