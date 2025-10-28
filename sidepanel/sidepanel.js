@@ -290,12 +290,164 @@
 // // --- Init ---
 // initCurrentMeeting();
 
+// const status = document.getElementById("status");
+
+// // Feature 1 elements
+// const extractBtn = document.getElementById("extractBtn");
+// const notesField = document.getElementById("notes");
+// const outputDiv = document.getElementById("output");
+
+// // Feature 2 elements
+// const captureBtn = document.getElementById("captureBtn");
+// const gallery = document.getElementById("gallery");
+// const modal = document.getElementById("modal");
+// const modalImage = document.getElementById("modalImage");
+// const modalAnalysis = document.getElementById("modalAnalysis");
+// const closeModal = document.getElementById("closeModal");
+
+// let textSession;
+// let imageSession;
+
+// // Store screenshot data
+// const screenshots = []; // { dataUri, blob, analysis }
+
+// async function initSessions() {
+//   try {
+//     textSession = await LanguageModel.create({
+//       initialPrompts: [
+//         {
+//           role: "system",
+//           content:
+//             "You are a meeting assistant who extracts actionable items and follow-up tasks from meeting notes.",
+//         },
+//       ],
+//     });
+
+//     imageSession = await LanguageModel.create({
+//       initialPrompts: [
+//         {
+//           role: "system",
+//           content:
+//             "You are a meeting analyst who interprets screenshots and extracts important discussion points and follow-up actions.",
+//         },
+//       ],
+//       expectedInputs: [{ type: "image" }],
+//     });
+
+//     status.textContent = "✅ Prompt API ready.";
+//   } catch (err) {
+//     console.error(err);
+//     status.textContent =
+//       "❌ Prompt API not supported. Enable chrome://flags → #prompt-api-for-gemini-nano";
+//   }
+// }
+
+// initSessions();
+
+// // === Feature 1: Extract actionable items ===
+// extractBtn.addEventListener("click", async () => {
+//   if (!textSession) return (status.textContent = "Session not ready.");
+
+//   const text = notesField.value.trim();
+//   if (!text) return (outputDiv.textContent = "Please enter meeting notes.");
+
+//   outputDiv.textContent = "⏳ Extracting actionable items...";
+//   try {
+//     const result = await textSession.prompt(
+//       `Extract actionable tasks and follow-up points from these meeting notes:\n\n${text}`
+//     );
+//     outputDiv.textContent = result;
+//   } catch (err) {
+//     console.error(err);
+//     outputDiv.textContent = "⚠️ Failed to extract items.";
+//   }
+// });
+
+// // === Feature 2: Capture Screenshot and Store ===
+// captureBtn.addEventListener("click", async () => {
+//   if (!imageSession)
+//     return (status.textContent = "Image analysis session not ready.");
+
+//   try {
+//     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+//     const imageUri = await chrome.tabs.captureVisibleTab(tab.windowId, {
+//       format: "png",
+//     });
+//     const res = await fetch(imageUri);
+//     const blob = await res.blob();
+
+//     const index = screenshots.length;
+//     screenshots.push({ dataUri: imageUri, blob, analysis: null });
+
+//     // Create thumbnail
+//     const thumb = document.createElement("img");
+//     thumb.src = imageUri;
+//     thumb.dataset.index = index;
+//     gallery.appendChild(thumb);
+
+//     thumb.addEventListener("click", () => openModal(index));
+//   } catch (err) {
+//     console.error(err);
+//     status.textContent = "❌ Failed to capture screenshot.";
+//   }
+// });
+
+// // === Modal Handling ===
+// async function openModal(index) {
+//   const shot = screenshots[index];
+//   modal.style.display = "flex";
+//   modalImage.src = shot.dataUri;
+
+//   if (shot.analysis) {
+//     modalAnalysis.textContent = shot.analysis;
+//     return;
+//   }
+
+//   modalAnalysis.textContent = "⏳ Analyzing screenshot...";
+
+//   try {
+//     const response = await imageSession.prompt([
+//       {
+//         role: "user",
+//         content: [
+//           {
+//             type: "text",
+//             value:
+//               "Analyze this meeting screenshot and summarize key discussion points and actionable follow-ups.",
+//           },
+//           { type: "image", value: shot.blob },
+//         ],
+//       },
+//     ]);
+
+//     shot.analysis = response;
+//     modalAnalysis.textContent = response;
+//   } catch (err) {
+//     console.error(err);
+//     modalAnalysis.textContent = "⚠️ Failed to analyze this screenshot.";
+//   }
+// }
+
+// closeModal.addEventListener("click", () => {
+//   modal.style.display = "none";
+// });
 const status = document.getElementById("status");
+const meetingIdDisplay = document.getElementById("meetingIdDisplay");
+const waitingMessage = document.getElementById("waitingMessage");
+const featuresContainer = document.getElementById("featuresContainer");
+
+// Tab elements
+const tabs = document.querySelectorAll(".tab");
+const currentTab = document.getElementById("currentTab");
+const historyTab = document.getElementById("historyTab");
+const pastMeetingsList = document.getElementById("pastMeetingsList");
+const emptyState = document.getElementById("emptyState");
 
 // Feature 1 elements
 const extractBtn = document.getElementById("extractBtn");
 const notesField = document.getElementById("notes");
 const outputDiv = document.getElementById("output");
+const saveIndicator = document.getElementById("saveIndicator");
 
 // Feature 2 elements
 const captureBtn = document.getElementById("captureBtn");
@@ -307,9 +459,159 @@ const closeModal = document.getElementById("closeModal");
 
 let textSession;
 let imageSession;
+let currentMeetingId = null;
+let checkInterval = null;
+let saveTimeout = null;
+let currentMeetingData = null;
 
-// Store screenshot data
-const screenshots = []; // { dataUri, blob, analysis }
+// Storage helper functions
+async function saveMeetingData(meetingId, data) {
+  const key = `meeting-${meetingId}`;
+  await chrome.storage.local.set({ [key]: data });
+  console.log("💾 Saved meeting data:", meetingId);
+}
+
+async function getMeetingData(meetingId) {
+  const key = `meeting-${meetingId}`;
+  const result = await chrome.storage.local.get(key);
+  return result[key] || null;
+}
+
+async function getAllMeetings() {
+  const allData = await chrome.storage.local.get(null);
+  const meetings = [];
+  for (const [key, value] of Object.entries(allData)) {
+    if (key.startsWith("meeting-")) {
+      meetings.push(value);
+    }
+  }
+  // Sort by start time, most recent first
+  return meetings.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+}
+
+// Initialize or update current meeting data
+async function initCurrentMeeting(meetingId) {
+  let data = await getMeetingData(meetingId);
+  
+  if (!data) {
+    // New meeting
+    data = {
+      meetingId: meetingId,
+      startTime: new Date().toISOString(),
+      endTime: null,
+      notes: "",
+      actionables: "",
+      screenshots: []
+    };
+  }
+  
+  currentMeetingData = data;
+  
+  // Load existing notes
+  if (data.notes) {
+    notesField.value = data.notes;
+  }
+  
+  // Load existing actionables
+  if (data.actionables) {
+    outputDiv.textContent = data.actionables;
+  }
+  
+  // Load existing screenshots
+  if (data.screenshots && data.screenshots.length > 0) {
+    gallery.innerHTML = "";
+    data.screenshots.forEach((screenshot, index) => {
+      const thumb = document.createElement("img");
+      thumb.src = screenshot.dataUri;
+      thumb.dataset.index = index;
+      gallery.appendChild(thumb);
+      thumb.addEventListener("click", () => openModalFromHistory(screenshot));
+    });
+  }
+  
+  return data;
+}
+
+// Save current meeting data
+async function saveCurrentMeeting() {
+  if (!currentMeetingId || !currentMeetingData) return;
+  
+  currentMeetingData.notes = notesField.value;
+  await saveMeetingData(currentMeetingId, currentMeetingData);
+  
+  // Show save indicator
+  saveIndicator.style.display = "inline-block";
+  setTimeout(() => {
+    saveIndicator.style.display = "none";
+  }, 2000);
+}
+
+// Auto-save notes as user types
+notesField.addEventListener("input", () => {
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(saveCurrentMeeting, 1000); // Save 1 second after user stops typing
+});
+
+// Check for meeting ID on load and periodically
+async function checkMeetingStatus() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: "getMeetingId" });
+    if (response && response.meetingId) {
+      if (currentMeetingId !== response.meetingId) {
+        activateMeeting(response.meetingId);
+      }
+    } else {
+      if (currentMeetingId !== null) {
+        await endCurrentMeeting();
+        showWaitingState();
+      }
+    }
+  } catch (err) {
+    console.error("Failed to get meeting ID:", err);
+  }
+}
+
+// Listen for meeting started message from background
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === "meetingStarted" && message.meetingId) {
+    activateMeeting(message.meetingId);
+  }
+});
+
+async function activateMeeting(meetingId) {
+  currentMeetingId = meetingId;
+  meetingIdDisplay.innerHTML = `📋 Meeting ID: <strong>${meetingId}</strong>`;
+  waitingMessage.style.display = "none";
+  featuresContainer.style.display = "block";
+  
+  // Initialize meeting data
+  await initCurrentMeeting(meetingId);
+  
+  console.log("✅ Meeting activated:", meetingId);
+}
+
+async function endCurrentMeeting() {
+  if (!currentMeetingId || !currentMeetingData) return;
+  
+  // Mark meeting as ended
+  currentMeetingData.endTime = new Date().toISOString();
+  await saveMeetingData(currentMeetingId, currentMeetingData);
+  
+  console.log("🏁 Meeting ended:", currentMeetingId);
+  
+  // Clear current meeting data
+  currentMeetingData = null;
+  notesField.value = "";
+  outputDiv.textContent = "";
+  gallery.innerHTML = "";
+}
+
+function showWaitingState() {
+  meetingIdDisplay.textContent = "⏳ No active meeting";
+  waitingMessage.style.display = "block";
+  featuresContainer.style.display = "none";
+  currentMeetingId = null;
+}
 
 async function initSessions() {
   try {
@@ -342,14 +644,149 @@ async function initSessions() {
   }
 }
 
+// Tab switching
+tabs.forEach(tab => {
+  tab.addEventListener("click", () => {
+    const tabName = tab.dataset.tab;
+    
+    // Update active tab
+    tabs.forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    
+    // Show corresponding content
+    if (tabName === "current") {
+      currentTab.classList.add("active");
+      historyTab.classList.remove("active");
+    } else if (tabName === "history") {
+      currentTab.classList.remove("active");
+      historyTab.classList.add("active");
+      loadPastMeetings();
+    }
+  });
+});
+
+// Load and display past meetings
+async function loadPastMeetings() {
+  const meetings = await getAllMeetings();
+  
+  if (meetings.length === 0) {
+    pastMeetingsList.innerHTML = "";
+    emptyState.style.display = "block";
+    return;
+  }
+  
+  emptyState.style.display = "none";
+  pastMeetingsList.innerHTML = "";
+  
+  meetings.forEach(meeting => {
+    const card = createMeetingCard(meeting);
+    pastMeetingsList.appendChild(card);
+  });
+}
+
+function createMeetingCard(meeting) {
+  const card = document.createElement("div");
+  card.className = "meeting-card";
+  
+  const startDate = new Date(meeting.startTime);
+  const dateStr = startDate.toLocaleDateString();
+  const timeStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  const duration = meeting.endTime 
+    ? Math.round((new Date(meeting.endTime) - new Date(meeting.startTime)) / 60000)
+    : "Ongoing";
+  
+  card.innerHTML = `
+    <div class="meeting-card-header">
+      <span class="meeting-id-badge">${meeting.meetingId}</span>
+      <span class="meeting-time">${dateStr} at ${timeStr}</span>
+    </div>
+    <div class="meeting-stats">
+      <span>⏱️ ${duration !== "Ongoing" ? duration + " min" : duration}</span>
+      <span>📝 ${meeting.notes ? "Has notes" : "No notes"}</span>
+      <span>📸 ${meeting.screenshots.length} screenshots</span>
+    </div>
+    <div class="meeting-details">
+      ${meeting.notes ? `
+        <div class="detail-section">
+          <h4>📝 Notes</h4>
+          <div class="detail-content">${meeting.notes}</div>
+        </div>
+      ` : ''}
+      
+      ${meeting.actionables ? `
+        <div class="detail-section">
+          <h4>✅ Actionables</h4>
+          <div class="detail-content">${meeting.actionables}</div>
+        </div>
+      ` : ''}
+      
+      ${meeting.screenshots.length > 0 ? `
+        <div class="detail-section">
+          <h4>📸 Screenshots (${meeting.screenshots.length})</h4>
+          <div>
+            ${meeting.screenshots.map((ss, idx) => 
+              `<img src="${ss.dataUri}" class="screenshot-thumb" data-index="${idx}">`
+            ).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  
+  // Toggle details on click
+  card.addEventListener("click", (e) => {
+    if (e.target.classList.contains("screenshot-thumb")) {
+      const index = parseInt(e.target.dataset.index);
+      openModalFromHistory(meeting.screenshots[index]);
+      return;
+    }
+    
+    const details = card.querySelector(".meeting-details");
+    details.classList.toggle("expanded");
+  });
+  
+  return card;
+}
+
+// Initialize on load
+checkMeetingStatus();
 initSessions();
+
+// Check meeting status every 2 seconds to detect changes
+checkInterval = setInterval(checkMeetingStatus, 2000);
+
+// Also check when window gains focus (side panel opened/expanded)
+window.addEventListener('focus', () => {
+  console.log("🔍 Side panel focused, checking meeting status...");
+  checkMeetingStatus();
+});
+
+// Check when page becomes visible
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    console.log("👁️ Side panel visible, checking meeting status...");
+    checkMeetingStatus();
+  }
+});
 
 // === Feature 1: Extract actionable items ===
 extractBtn.addEventListener("click", async () => {
-  if (!textSession) return (status.textContent = "Session not ready.");
+  if (!currentMeetingId) {
+    outputDiv.textContent = "⚠️ No active meeting. Please join a meeting first.";
+    return;
+  }
+
+  if (!textSession) {
+    status.textContent = "Session not ready.";
+    return;
+  }
 
   const text = notesField.value.trim();
-  if (!text) return (outputDiv.textContent = "Please enter meeting notes.");
+  if (!text) {
+    outputDiv.textContent = "Please enter meeting notes.";
+    return;
+  }
 
   outputDiv.textContent = "⏳ Extracting actionable items...";
   try {
@@ -357,6 +794,12 @@ extractBtn.addEventListener("click", async () => {
       `Extract actionable tasks and follow-up points from these meeting notes:\n\n${text}`
     );
     outputDiv.textContent = result;
+    
+    // Save actionables
+    currentMeetingData.actionables = result;
+    await saveCurrentMeeting();
+    
+    console.log("📝 Extracted items for meeting:", currentMeetingId);
   } catch (err) {
     console.error(err);
     outputDiv.textContent = "⚠️ Failed to extract items.";
@@ -365,8 +808,15 @@ extractBtn.addEventListener("click", async () => {
 
 // === Feature 2: Capture Screenshot and Store ===
 captureBtn.addEventListener("click", async () => {
-  if (!imageSession)
-    return (status.textContent = "Image analysis session not ready.");
+  if (!currentMeetingId) {
+    status.textContent = "⚠️ No active meeting. Please join a meeting first.";
+    return;
+  }
+
+  if (!imageSession) {
+    status.textContent = "Image analysis session not ready.";
+    return;
+  }
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -376,16 +826,27 @@ captureBtn.addEventListener("click", async () => {
     const res = await fetch(imageUri);
     const blob = await res.blob();
 
-    const index = screenshots.length;
-    screenshots.push({ dataUri: imageUri, blob, analysis: null });
-
     // Create thumbnail
     const thumb = document.createElement("img");
     thumb.src = imageUri;
-    thumb.dataset.index = index;
     gallery.appendChild(thumb);
 
+    // Store screenshot data
+    const screenshotData = {
+      dataUri: imageUri,
+      timestamp: new Date().toISOString(),
+      analysis: null
+    };
+    
+    currentMeetingData.screenshots.push(screenshotData);
+    await saveCurrentMeeting();
+
+    const index = currentMeetingData.screenshots.length - 1;
+    thumb.dataset.index = index;
     thumb.addEventListener("click", () => openModal(index));
+
+    console.log("📸 Screenshot captured for meeting:", currentMeetingId);
+    status.textContent = "✅ Screenshot captured and saved!";
   } catch (err) {
     console.error(err);
     status.textContent = "❌ Failed to capture screenshot.";
@@ -394,7 +855,9 @@ captureBtn.addEventListener("click", async () => {
 
 // === Modal Handling ===
 async function openModal(index) {
-  const shot = screenshots[index];
+  if (!currentMeetingData) return;
+  
+  const shot = currentMeetingData.screenshots[index];
   modal.style.display = "flex";
   modalImage.src = shot.dataUri;
 
@@ -406,6 +869,10 @@ async function openModal(index) {
   modalAnalysis.textContent = "⏳ Analyzing screenshot...";
 
   try {
+    // Convert dataUri to blob for analysis
+    const res = await fetch(shot.dataUri);
+    const blob = await res.blob();
+    
     const response = await imageSession.prompt([
       {
         role: "user",
@@ -415,23 +882,41 @@ async function openModal(index) {
             value:
               "Analyze this meeting screenshot and summarize key discussion points and actionable follow-ups.",
           },
-          { type: "image", value: shot.blob },
+          { type: "image", value: blob },
         ],
       },
     ]);
 
     shot.analysis = response;
     modalAnalysis.textContent = response;
+
+    // Save analysis
+    await saveCurrentMeeting();
+    
+    console.log("🔍 Analysis completed for meeting:", currentMeetingId);
   } catch (err) {
     console.error(err);
     modalAnalysis.textContent = "⚠️ Failed to analyze this screenshot.";
   }
 }
 
+// Open modal from history (past meetings)
+function openModalFromHistory(screenshot) {
+  modal.style.display = "flex";
+  modalImage.src = screenshot.dataUri;
+  modalAnalysis.textContent = screenshot.analysis || "No analysis available";
+}
+
 closeModal.addEventListener("click", () => {
   modal.style.display = "none";
 });
 
+// Cleanup interval on unload
+window.addEventListener('unload', () => {
+  if (checkInterval) {
+    clearInterval(checkInterval);
+  }
+});
 // const status = document.getElementById("status");
 
 // // === FEATURE 1 ===
