@@ -1,575 +1,78 @@
-<!-- <!doctype html>
-<html>
-  <head>
-    <link rel="stylesheet" type="text/css" href="index.css" />
-  </head>
-  <body>
-    <textarea
-      id="input-prompt"
-      placeholder='Type something, e.g. "Write a haiku about Chrome Extensions"'
-      cols="30"
-      rows="5"
-    ></textarea>
-    <div>
-      <input
-        type="range"
-        id="temperature"
-        name="temperature"
-        min="0"
-        max="2"
-        step="0.01"
-      />
-      <label for="temperature"
-        >Temperature: <span id="label-temperature"></span
-      ></label>
-    </div>
-    <div>
-      <input type="range" id="top-k" name="top-k" min="1" max="8" step="1" />
-      <label for="top-k">Top-k: <span id="label-top-k"></span></label>
-    </div>
-    <button id="button-prompt" class="primary" disabled>Run</button>
-    <button id="button-reset" class="secondary" disabled>Reset</button>
-    <div id="response" class="text" hidden></div>
-    <div id="loading" class="text" hidden><span class="blink">...</span></div>
-    <div id="error" class="text" hidden></div>
-    <script src="index.js" type="module"></script>
-  </body>
-</html> -->
-<!-- <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>MeetMate</title>
-  </head>
-  <body>
-    <h2>🧠 MeetMate - AI Meeting Assistant</h2>
-
-    <section id="feature1">
-      <h3>Feature 1: Extract Actionable Items</h3>
-      <textarea
-        id="notes"
-        rows="4"
-        placeholder="Paste or type your meeting notes here..."
-      ></textarea>
-      <br />
-      <button id="extractBtn">Extract Actionable Items</button>
-      <div id="output" style="white-space: pre-wrap; margin-top: 8px;"></div>
-    </section>
-
-    <hr />
-
-    <section id="feature2">
-      <h3>Feature 2: Meeting Screenshot Analyzer</h3>
-      <button id="captureBtn">📸 Capture Screenshot</button>
-      <div id="gallery" style="margin-top: 10px;"></div>
-    </section>
-
-    <p id="status" style="margin-top: 10px;"></p>
-
-    <script type="module" src="sidepanel.js"></script>
-  </body>
-</html>
-
- -->
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>MeetMate</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        padding: 0;
-        margin: 0;
-      }
-
-      #meetingHeader {
-        background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
-        color: white;
-        padding: 16px;
-        border-radius: 0 0 12px 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-
-      #meetingHeader h2 {
-        margin: 0 0 8px 0;
-        font-size: 20px;
-      }
-
-      #meetingIdDisplay {
-        font-size: 14px;
-        background: rgba(255, 255, 255, 0.2);
-        padding: 8px 12px;
-        border-radius: 6px;
-        display: inline-block;
-        font-weight: 500;
-      }
-
-      #tabs {
-        display: flex;
-        background: #f5f5f5;
-        border-bottom: 2px solid #e0e0e0;
-        margin-top: 12px;
-      }
-
-      .tab {
-        flex: 1;
-        padding: 12px;
-        text-align: center;
-        cursor: pointer;
-        border: none;
-        background: transparent;
-        font-size: 14px;
-        font-weight: 500;
-        color: #666;
-        transition: all 0.3s;
-      }
-
-      .tab.active {
-        background: white;
-        color: #1a73e8;
-        border-bottom: 3px solid #1a73e8;
-      }
-
-      .tab:hover {
-        background: rgba(26, 115, 232, 0.1);
-      }
-
-      .tab-content {
-        display: none;
-        padding: 16px;
-      }
-
-      .tab-content.active {
-        display: block;
-      }
-
-      #waitingMessage {
-        text-align: center;
-        padding: 40px 20px;
-        color: #666;
-      }
-
-      #waitingMessage h3 {
-        color: #1a73e8;
-        margin-bottom: 12px;
-      }
-
-      section {
-        margin-bottom: 24px;
-      }
-
-      h3 {
-        color: #333;
-        font-size: 16px;
-        margin-bottom: 12px;
-      }
-
-      textarea {
-        width: 100%;
-        box-sizing: border-box;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        font-family: Arial, sans-serif;
-        font-size: 14px;
-      }
-
-      button {
-        background: #1a73e8;
-        color: white;
-        border: none;
-        padding: 10px 16px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        margin-top: 8px;
-      }
-
-      button:hover {
-        background: #1557b0;
-      }
-
-      button:disabled {
-        background: #ccc;
-        cursor: not-allowed;
-      }
-
-      #output {
-        white-space: pre-wrap;
-        margin-top: 8px;
-        padding: 12px;
-        background: #f5f5f5;
-        border-radius: 6px;
-        font-size: 14px;
-      }
-
-      #gallery {
-        margin-top: 10px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-
-      #gallery img {
-        width: 160px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: transform 0.2s;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      }
-
-      #gallery img:hover {
-        transform: scale(1.05);
-      }
-
-      #modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.8);
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        z-index: 9999;
-      }
-
-      #modal img {
-        max-width: 90%;
-        max-height: 70%;
-        border-radius: 10px;
-      }
-
-      #modal p {
-        color: white;
-        max-width: 80%;
-        margin-top: 12px;
-        font-size: 16px;
-        line-height: 1.4;
-        white-space: pre-wrap;
-      }
-
-      #closeModal {
-        position: absolute;
-        top: 20px;
-        right: 30px;
-        font-size: 28px;
-        color: white;
-        cursor: pointer;
-      }
-
-      #status {
-        margin-top: 10px;
-        padding: 8px;
-        background: #e8f0fe;
-        border-radius: 6px;
-        font-size: 13px;
-        color: #1a73e8;
-      }
-
-      hr {
-        border: none;
-        border-top: 1px solid #e0e0e0;
-        margin: 20px 0;
-      }
-
-      /* Past Meetings Styles */
-      .meeting-card {
-        background: white;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 12px;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-
-      .meeting-card:hover {
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        border-color: #1a73e8;
-      }
-
-      .meeting-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-      }
-
-      .meeting-id-badge {
-        background: #e8f0fe;
-        color: #1a73e8;
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 13px;
-        font-weight: 600;
-      }
-
-      .meeting-time {
-        font-size: 12px;
-        color: #666;
-      }
-
-      .meeting-stats {
-        display: flex;
-        gap: 16px;
-        font-size: 13px;
-        color: #666;
-        margin-top: 8px;
-      }
-
-      .meeting-details {
-        display: none;
-        margin-top: 16px;
-        padding-top: 16px;
-        border-top: 1px solid #e0e0e0;
-      }
-
-      .meeting-details.expanded {
-        display: block;
-      }
-
-      .detail-section {
-        margin-bottom: 16px;
-      }
-
-      .detail-section h4 {
-        font-size: 14px;
-        color: #333;
-        margin-bottom: 8px;
-        font-weight: 600;
-      }
-
-      .detail-content {
-        background: #f9f9f9;
-        padding: 12px;
-        border-radius: 6px;
-        font-size: 13px;
-        line-height: 1.5;
-        white-space: pre-wrap;
-      }
-
-      .screenshot-thumb {
-        width: 120px;
-        height: 80px;
-        object-fit: cover;
-        border-radius: 6px;
-        cursor: pointer;
-        margin-right: 8px;
-        margin-bottom: 8px;
-      }
-
-      .screenshot-thumb:hover {
-        opacity: 0.8;
-      }
-
-      #emptyState {
-        text-align: center;
-        padding: 60px 20px;
-        color: #999;
-      }
-
-      #emptyState img {
-        width: 120px;
-        opacity: 0.3;
-        margin-bottom: 16px;
-      }
-
-      .save-indicator {
-        display: inline-block;
-        font-size: 12px;
-        color: #34a853;
-        margin-left: 8px;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="meetingHeader">
-      <h2>🧠 MeetMate - Your Meeting Co-Pilot</h2>
-      <div id="meetingIdDisplay">⏳ Detecting meeting...</div>
-    </div>
-
-    <div id="tabs">
-      <button class="tab active" data-tab="current">📝 Current Meeting</button>
-      <button class="tab" data-tab="history">📚 Past Meetings</button>
-    </div>
-
-    <!-- Current Meeting Tab -->
-    <div id="currentTab" class="tab-content active">
-<div id="waitingMessage">
-      <h3>👋 Welcome to MeetMate!</h3>
-      <p>Start or join a Google Meet to activate the extension.</p>
-      <p style="font-size: 13px; color: #999; margin-top: 16px;">
-        The extension will automatically detect your meeting ID<br />and enable all features.
-      </p>
-    </div>
-
-    <div id="featuresContainer">
-      <section id="feature1">
-        <h3>📝 Extract Actionable Items</h3>
-        <textarea
-          id="notes"
-          rows="4"
-          placeholder="Paste or type your meeting notes here..."
-        ></textarea>
-        <br />
-        <button id="extractBtn">Extract Actionable Items</button>
-        <div id="output"></div>
-      </section>
-
-      <hr />
-
-      <section id="feature2">
-        <h3>📸 Meeting Screenshot Analyzer</h3>
-        <button id="captureBtn">📸 Capture Screenshot</button>
-        <div id="gallery"></div>
-      </section>
-      
-
-        <p id="status"></p>
-      </div>
-    </div>
-
-    <!-- Past Meetings Tab -->
-    <div id="historyTab" class="tab-content">
-      <div id="pastMeetingsList"></div>
-      <div id="emptyState" style="display: none;">
-        <div style="font-size: 48px; margin-bottom: 16px;">📭</div>
-        <h3 style="color: #999;">No Past Meetings</h3>
-        <p style="font-size: 14px;">Your meeting history will appear here</p>
-      </div>
-    </div>
-
-    <div id="modal">
-      <span id="closeModal">&times;</span>
-      <img id="modalImage" />
-      <p id="modalAnalysis">Loading analysis...</p>
-    </div>
-
-    <script type="module" src="sidepanel.js"></script>
-  </body>
-</html>
-<!-- <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>MeetMate</title>
-    <style>
-      #gallery img {
-        width: 160px;
-        margin: 6px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: transform 0.2s;
-      }
-      #gallery img:hover {
-        transform: scale(1.05);
-      }
-
-      #modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.8);
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        z-index: 9999;
-      }
-
-      #modal img {
-        max-width: 90%;
-        max-height: 70%;
-        border-radius: 10px;
-      }
-
-      #modal p {
-        color: white;
-        max-width: 80%;
-        margin-top: 12px;
-        font-size: 16px;
-        line-height: 1.4;
-        white-space: pre-wrap;
-      }
-
-      #closeModal {
-        position: absolute;
-        top: 20px;
-        right: 30px;
-        font-size: 28px;
-        color: white;
-        cursor: pointer;
-      }
-    </style>
-  </head>
-  <body>
-    <h2>🧠 MeetMate - AI Meeting Assistant</h2>
-
-    <section id="feature1">
-      <h3>Feature 1: Extract Actionable Items</h3>
-      <textarea
-        id="notes"
-        rows="4"
-        placeholder="Paste or type your meeting notes here..."
-      ></textarea>
-      <br />
-      <button id="extractBtn">Extract Actionable Items</button>
-      <div id="output" style="white-space: pre-wrap; margin-top: 8px;"></div>
-    </section>
-
-    <hr />
-
-    <section id="feature2">
-      <h3>Feature 2: Meeting Screenshot Analyzer</h3>
-      <button id="captureBtn">📸 Capture Screenshot</button>
-      <div id="gallery" style="margin-top: 10px;"></div>
-    </section>
-
-    <p id="status" style="margin-top: 10px;"></p>
-
-    <div id="modal">
-      <span id="closeModal">&times;</span>
-      <img id="modalImage" />
-      <p id="modalAnalysis">Loading analysis...</p>
-    </div>
-
-    <script type="module" src="sidepanel.js"></script>
-  </body>
-</html> -->
-<!-- <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>MeetMate Side Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MeetMate - AI Meeting Co-Pilot</title>
     <link rel="stylesheet" href="sidepanel.css" />
   </head>
   <body>
-    <div class="toggle-container">
-      <button id="currentBtn" class="active">Current Meeting</button>
-      <button id="pastBtn">Past Meetings</button>
+    <!-- Header -->
+    <header class="header">
+      <h1>🧠 MeetMate</h1>
+      <p class="tagline">AI Meeting Co-Pilot</p>
+    </header>
+
+    <!-- Status Bar -->
+    <div id="status" class="status-bar">Initializing AI...</div>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+      <button id="tabNotes" class="tab-btn active">📝 Notes</button>
+      <button id="tabScreenshots" class="tab-btn">📸 Captures</button>
+      <button id="tabSummary" class="tab-btn">📋 Summary</button>
+    </nav>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- Notes Tab -->
+      <section id="contentNotes" class="tab-panel active">
+        <h3>Meeting Notes</h3>
+        <textarea
+          id="notes"
+          rows="6"
+          placeholder="Type your meeting notes here... AI will automatically detect action items!"
+        ></textarea>
+        <button id="extractBtn" class="btn btn-primary">
+          🤖 Extract Action Items
+        </button>
+        <div id="output" class="output-box"></div>
+      </section>
+
+      <!-- Screenshots Tab -->
+      <section id="contentScreenshots" class="tab-panel">
+        <h3>Captured Slides</h3>
+        <button id="captureBtn" class="btn btn-primary">
+          📸 Capture Screenshot
+        </button>
+        <p class="hint">Click thumbnails to view AI analysis</p>
+        <div id="gallery" class="gallery"></div>
+      </section>
+
+      <!-- Summary Tab -->
+      <section id="contentSummary" class="tab-panel">
+        <h3>Meeting Summary</h3>
+        <p class="hint">
+          Generate a comprehensive summary of your notes and captured slides
+        </p>
+        <button id="generateSummaryBtn" class="btn btn-primary">
+          ✨ Generate Summary
+        </button>
+        <div id="summaryOutput" class="output-box"></div>
+        <button id="emailDraftBtn" class="btn btn-secondary" style="display: none;">
+          📧 Draft Follow-up Email
+        </button>
+        <div id="emailOutput" class="output-box"></div>
+      </section>
     </div>
 
-
-    <div id="currentSection" class="section">
-      <h2>Current Meeting</h2>
-      <textarea id="notesInput" placeholder="Write meeting notes..."></textarea>
-      <button id="captureBtn">📸 Capture Screenshot</button>
-
-      <div id="screenshotsContainer"></div>
+    <!-- Modal for Screenshot Analysis -->
+    <div id="modal" class="modal">
+      <span id="closeModal" class="modal-close">&times;</span>
+      <img id="modalImage" class="modal-image" alt="Screenshot" />
+      <div id="modalAnalysis" class="modal-analysis">Loading analysis...</div>
     </div>
 
-
-    <div id="pastSection" class="section hidden">
-      <h2>Past Meetings</h2>
-      <div id="pastMeetingsList"></div>
-    </div>
-
-    <script src="sidepanel.js"></script>
+    <script type="module" src="sidepanel.js"></script>
   </body>
-</html> -->
+</html>
