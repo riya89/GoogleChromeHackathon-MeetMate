@@ -469,6 +469,38 @@
           <div id="captionContainer"></div>
         </div>
 
+        <!-- Feature 4: Meeting Summary -->
+        <div class="feature-section scrollable">
+          <h3>📊 Meeting Summary</h3>
+          <p style="font-size: 13px; color: #666; margin-bottom: 12px;">
+            Generate an AI-powered summary from all captured captions
+          </p>
+
+          <div class="button-group">
+            <button id="summaryQuickBtn">⚡ Quick Summary</button>
+            <button id="summaryComprehensiveBtn">📋 Comprehensive</button>
+          </div>
+
+          <div class="button-group">
+            <button id="summaryActionsBtn">✅ Action Items</button>
+            <button id="summaryDecisionsBtn">🎯 Decisions</button>
+            <button id="summaryTopicsBtn">💡 Topics</button>
+          </div>
+
+          <div id="summaryStatus" style="margin-top: 12px; font-size: 13px; color: #666;"></div>
+
+          <div id="summaryOutput" style="
+            margin-top: 12px;
+            padding: 16px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #1a73e8;
+            display: none;
+            white-space: pre-wrap;
+            line-height: 1.6;
+          "></div>
+        </div>
+
         <p id="status"></p>
       </div>
     </div>

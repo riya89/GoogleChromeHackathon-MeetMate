@@ -31,16 +31,27 @@ const translateBtn = document.getElementById("translateBtn");
 const captionContainer = document.getElementById("captionContainer");
 const captionStatus = document.getElementById("captionStatus");
 
+// Feature 4 elements (Summary)
+const summaryQuickBtn = document.getElementById("summaryQuickBtn");
+const summaryComprehensiveBtn = document.getElementById("summaryComprehensiveBtn");
+const summaryActionsBtn = document.getElementById("summaryActionsBtn");
+const summaryDecisionsBtn = document.getElementById("summaryDecisionsBtn");
+const summaryTopicsBtn = document.getElementById("summaryTopicsBtn");
+const summaryStatus = document.getElementById("summaryStatus");
+const summaryOutput = document.getElementById("summaryOutput");
+
 let textSession;
 let imageSession;
 let rewriterSession;
 let translatorSession;
+let summarySession; // New: for meeting summarization
 let currentMeetingId = null;
 let checkInterval = null;
 let saveTimeout = null;
 let currentMeetingData = null;
 let analysisQueue = [];
 let isAnalyzing = false;
+let isGeneratingSummary = false; // Track summary generation state
 
 // Caption-related variables
 let mediaRecorder = null;
@@ -132,7 +143,8 @@ async function initCurrentMeeting(meetingId) {
       notes: "",
       actionables: "",
       screenshots: [],
-      captions: []
+      captions: [],
+      summary: null // New: for meeting summary
     };
   }
   
@@ -148,9 +160,25 @@ async function initCurrentMeeting(meetingId) {
   
   renderScreenshotGrid();
   renderCaptions();
+  renderSummary();
   scheduleAutoAnalysis();
-  
+
   return data;
+}
+
+// Render existing summary
+function renderSummary() {
+  if (!currentMeetingData || !currentMeetingData.summary) {
+    summaryOutput.style.display = "none";
+    summaryStatus.textContent = "";
+    return;
+  }
+
+  const summary = currentMeetingData.summary;
+  summaryOutput.textContent = summary.content;
+  summaryOutput.style.display = "block";
+  summaryStatus.textContent = `✅ ${summary.type.charAt(0).toUpperCase() + summary.type.slice(1)} summary (${summary.captionCount} captions)`;
+  summaryStatus.style.color = "#34a853";
 }
 
 // Render captions
@@ -543,7 +571,7 @@ function resetCaptionUI() {
 
 function toggleTranslation() {
   isTranslating = !isTranslating;
-  
+
   if (isTranslating) {
     translateBtn.style.background = "#34a853";
     translateBtn.textContent = "🌐 Translating...";
@@ -552,6 +580,124 @@ function toggleTranslation() {
     translateBtn.style.background = "#1a73e8";
     translateBtn.textContent = "🌐 Translate";
     captionStatus.textContent = "🎤 Recording...";
+  }
+}
+
+// Meeting Summary Generation
+async function generateMeetingSummary(type = 'comprehensive') {
+  if (!currentMeetingData || !summarySession) {
+    return { success: false, error: "Meeting data or summary session not available" };
+  }
+
+  const captions = currentMeetingData.captions || [];
+
+  if (captions.length === 0) {
+    return { success: false, error: "No captions available. Please record some captions first." };
+  }
+
+  isGeneratingSummary = true;
+
+  try {
+    // Combine all captions into a full transcript
+    const transcript = captions
+      .map(c => c.simplified || c.original)
+      .join(' ');
+
+    // Different prompts for different summary types
+    const prompts = {
+      quick: `Provide a brief 3-5 bullet point summary of the key points from this meeting transcript:\n\n${transcript}`,
+
+      comprehensive: `Create a comprehensive meeting summary with the following sections:
+1. **Overview**: Brief description of the meeting
+2. **Key Discussion Points**: Main topics discussed (bullet points)
+3. **Decisions Made**: Any decisions or conclusions reached
+4. **Action Items**: Tasks and follow-ups identified
+5. **Important Mentions**: Notable concerns or highlights
+
+Meeting transcript:\n${transcript}`,
+
+      actions: `Extract and list ONLY the action items, tasks, and follow-ups from this meeting. Format as a checklist.
+
+Meeting transcript:\n${transcript}`,
+
+      decisions: `List ONLY the key decisions, conclusions, and agreements made during this meeting. Be specific and concise.
+
+Meeting transcript:\n${transcript}`,
+
+      topics: `Identify and list the main topics and themes discussed in this meeting, with a brief description of each.
+
+Meeting transcript:\n${transcript}`
+    };
+
+    const prompt = prompts[type] || prompts.comprehensive;
+
+    const summaryText = await summarySession.prompt(prompt);
+
+    const summaryData = {
+      type: type,
+      content: summaryText,
+      generatedAt: new Date().toISOString(),
+      captionCount: captions.length,
+      transcriptLength: transcript.length
+    };
+
+    currentMeetingData.summary = summaryData;
+    await saveCurrentMeeting();
+
+    isGeneratingSummary = false;
+    return { success: true, summary: summaryData };
+
+  } catch (err) {
+    console.error("Summary generation error:", err);
+    isGeneratingSummary = false;
+    return { success: false, error: err.message };
+  }
+}
+
+// Handle summary button click
+async function handleSummaryGeneration(type) {
+  if (!currentMeetingId) {
+    summaryStatus.textContent = "⚠️ No active meeting";
+    summaryStatus.style.color = "#d93025";
+    return;
+  }
+
+  if (!summarySession) {
+    summaryStatus.textContent = "⚠️ Summary session not ready. Please wait...";
+    summaryStatus.style.color = "#d93025";
+    return;
+  }
+
+  if (isGeneratingSummary) {
+    summaryStatus.textContent = "⏳ Already generating summary...";
+    summaryStatus.style.color = "#666";
+    return;
+  }
+
+  // Disable all summary buttons
+  const allSummaryBtns = [summaryQuickBtn, summaryComprehensiveBtn, summaryActionsBtn, summaryDecisionsBtn, summaryTopicsBtn];
+  allSummaryBtns.forEach(btn => btn.disabled = true);
+
+  summaryStatus.textContent = `⏳ Generating ${type} summary...`;
+  summaryStatus.style.color = "#1a73e8";
+  summaryOutput.style.display = "none";
+
+  const result = await generateMeetingSummary(type);
+
+  // Re-enable all buttons
+  allSummaryBtns.forEach(btn => btn.disabled = false);
+
+  if (result.success) {
+    summaryStatus.textContent = `✅ Summary generated (${result.summary.captionCount} captions analyzed)`;
+    summaryStatus.style.color = "#34a853";
+
+    summaryOutput.textContent = result.summary.content;
+    summaryOutput.style.display = "block";
+
+    console.log(`📊 Generated ${type} summary for meeting:`, currentMeetingId);
+  } else {
+    summaryStatus.textContent = `⚠️ Failed: ${result.error}`;
+    summaryStatus.style.color = "#d93025";
   }
 }
 
@@ -596,22 +742,39 @@ async function activateMeeting(meetingId) {
 
 async function endCurrentMeeting() {
   if (!currentMeetingId || !currentMeetingData) return;
-  
+
   // Stop captions if recording
   if (isRecording) {
     stopCaptions();
   }
-  
+
+  // Auto-generate comprehensive summary if captions exist and no summary yet
+  if (currentMeetingData.captions && currentMeetingData.captions.length > 0 && !currentMeetingData.summary) {
+    console.log("📊 Auto-generating meeting summary...");
+    status.textContent = "📊 Generating meeting summary...";
+
+    try {
+      const result = await generateMeetingSummary('comprehensive');
+      if (result.success) {
+        console.log("✅ Auto-summary generated successfully");
+      }
+    } catch (err) {
+      console.error("Auto-summary failed:", err);
+    }
+  }
+
   currentMeetingData.endTime = new Date().toISOString();
   await saveMeetingData(currentMeetingId, currentMeetingData);
-  
+
   console.log("🏁 Meeting ended:", currentMeetingId);
-  
+
   currentMeetingData = null;
   notesField.value = "";
   outputDiv.textContent = "";
   gallery.innerHTML = "";
   captionContainer.innerHTML = "";
+  summaryOutput.style.display = "none";
+  summaryStatus.textContent = "";
   analysisQueue = [];
 }
 
@@ -642,7 +805,22 @@ async function initSessions() {
       ],
       expectedInputs: [{ type: "image" }]
     });
-    
+
+    // Initialize Summary Session for meeting summarization
+    try {
+      summarySession = await LanguageModel.create({
+        initialPrompts: [
+          {
+            role: "system",
+            content: "You are an expert meeting summarizer. You analyze meeting transcripts and create clear, concise, and well-structured summaries that highlight key discussion points, decisions, action items, and important topics. Format your summaries with proper structure using markdown when appropriate."
+          }
+        ]
+      });
+      console.log("✅ Summary session ready");
+    } catch (err) {
+      console.warn("⚠️ Summary session not available:", err);
+    }
+
     // Initialize Rewriter API
     try {
       rewriterSession = await ai.rewriter.create({
@@ -652,7 +830,7 @@ async function initSessions() {
     } catch (err) {
       console.warn("⚠️ Rewriter API not available:", err);
     }
-    
+
     // Initialize Translator API (example for Hindi)
     try {
       translatorSession = await translation.createTranslator({
@@ -777,7 +955,18 @@ function createMeetingCard(meeting) {
           <div class="detail-content">${meeting.actionables}</div>
         </div>
       ` : ''}
-      
+
+      ${meeting.summary ? `
+        <div class="detail-section">
+          <h4>📊 Meeting Summary (${meeting.summary.type})</h4>
+          <div class="detail-content" style="white-space: pre-wrap;">${meeting.summary.content}</div>
+          <div style="font-size: 11px; color: #666; margin-top: 8px;">
+            Generated: ${new Date(meeting.summary.generatedAt).toLocaleString()} |
+            Based on ${meeting.summary.captionCount} captions
+          </div>
+        </div>
+      ` : ''}
+
       ${meeting.captions && meeting.captions.length > 0 ? `
         <div class="detail-section">
           <h4>🎤 Live Captions (${meeting.captions.length})</h4>
@@ -939,6 +1128,13 @@ captureBtn.addEventListener("click", async () => {
 startCaptionBtn.addEventListener("click", startCaptions);
 stopCaptionBtn.addEventListener("click", stopCaptions);
 translateBtn.addEventListener("click", toggleTranslation);
+
+// Feature 4: Summary controls
+summaryQuickBtn.addEventListener("click", () => handleSummaryGeneration('quick'));
+summaryComprehensiveBtn.addEventListener("click", () => handleSummaryGeneration('comprehensive'));
+summaryActionsBtn.addEventListener("click", () => handleSummaryGeneration('actions'));
+summaryDecisionsBtn.addEventListener("click", () => handleSummaryGeneration('decisions'));
+summaryTopicsBtn.addEventListener("click", () => handleSummaryGeneration('topics'));
 
 // Modal handling
 async function openModal(index) {
