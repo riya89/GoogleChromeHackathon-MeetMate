@@ -866,21 +866,31 @@ async function loadPastMeetings() {
 function createMeetingCard(meeting) {
   const card = document.createElement("div");
   card.className = "meeting-card";
-  
+
   const startDate = new Date(meeting.startTime);
   const dateStr = startDate.toLocaleDateString();
   const timeStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  
-  const duration = meeting.endTime 
+
+  const duration = meeting.endTime
     ? Math.round((new Date(meeting.endTime) - new Date(meeting.startTime)) / 60000)
     : "Ongoing";
-  
+
   card.innerHTML = `
     <div class="meeting-card-header">
       <span class="meeting-id-badge">${meeting.meetingId}</span>
-      <div style="display: flex; gap: 8px; align-items: center;">
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
         <span class="meeting-time">${dateStr} at ${timeStr}</span>
-        <button class="delete-meeting-btn" data-meeting-id="${meeting.meetingId}" 
+        <button class="export-markdown-btn" data-meeting-id="${meeting.meetingId}"
+          style="background: #34a853; padding: 4px 10px; font-size: 12px; border-radius: 4px;"
+          title="Copy as Markdown">
+          📋 Markdown
+        </button>
+        <button class="export-pdf-btn" data-meeting-id="${meeting.meetingId}"
+          style="background: #ea4335; padding: 4px 10px; font-size: 12px; border-radius: 4px;"
+          title="Export as PDF">
+          📄 PDF
+        </button>
+        <button class="delete-meeting-btn" data-meeting-id="${meeting.meetingId}"
           style="background: #d93025; padding: 4px 10px; font-size: 12px; border-radius: 4px;">
           🗑️ Delete
         </button>
@@ -951,15 +961,30 @@ function createMeetingCard(meeting) {
     </div>
   `;
   
+  // Export as Markdown button
+  const markdownBtn = card.querySelector(".export-markdown-btn");
+  markdownBtn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    await exportMeetingAsMarkdown(meeting);
+  });
+
+  // Export as PDF button
+  const pdfBtn = card.querySelector(".export-pdf-btn");
+  pdfBtn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    exportMeetingAsPDF(meeting);
+  });
+
+  // Delete button
   const deleteBtn = card.querySelector(".delete-meeting-btn");
   deleteBtn.addEventListener("click", async (e) => {
     e.stopPropagation();
-    
+
     if (confirm(`Delete meeting ${meeting.meetingId}? This cannot be undone.`)) {
       await deleteMeeting(meeting.meetingId);
       card.remove();
       await loadPastMeetings();
-      
+
       status.textContent = `✅ Deleted meeting ${meeting.meetingId}`;
       setTimeout(() => status.textContent = "", 3000);
     }
@@ -981,6 +1006,274 @@ function createMeetingCard(meeting) {
   });
   
   return card;
+}
+
+// Export meeting as Markdown
+async function exportMeetingAsMarkdown(meeting) {
+  console.log("📋 [EXPORT] Exporting as Markdown:", meeting.meetingId);
+
+  const startDate = new Date(meeting.startTime);
+  const endDate = meeting.endTime ? new Date(meeting.endTime) : null;
+  const duration = endDate
+    ? Math.round((endDate - startDate) / 60000) + " minutes"
+    : "Ongoing";
+
+  // Build Markdown content
+  let markdown = `# Meeting: ${meeting.meetingId}\n\n`;
+  markdown += `**Date:** ${startDate.toLocaleDateString()} at ${startDate.toLocaleTimeString()}\n`;
+  markdown += `**Duration:** ${duration}\n`;
+  markdown += `**Status:** ${endDate ? "Completed" : "Ongoing"}\n\n`;
+
+  markdown += `---\n\n`;
+
+  // Notes
+  if (meeting.notes) {
+    markdown += `## 📝 Meeting Notes\n\n`;
+    markdown += `${meeting.notes}\n\n`;
+  }
+
+  // Actionables
+  if (meeting.actionables) {
+    markdown += `## ✅ Actionable Items\n\n`;
+    markdown += `${meeting.actionables}\n\n`;
+  }
+
+  // Summary
+  if (meeting.summary) {
+    markdown += `## 📊 Meeting Summary (${meeting.summary.type})\n\n`;
+    markdown += `${meeting.summary.content}\n\n`;
+    markdown += `*Generated: ${new Date(meeting.summary.generatedAt).toLocaleString()}*\n`;
+    markdown += `*Based on ${meeting.summary.captionCount} captions*\n\n`;
+  }
+
+  // Captions
+  if (meeting.captions && meeting.captions.length > 0) {
+    markdown += `## 💬 Live Captions (${meeting.captions.length})\n\n`;
+    meeting.captions.forEach(caption => {
+      const time = new Date(caption.timestamp).toLocaleTimeString();
+      markdown += `**[${time}]** ${caption.simplified || caption.original}\n\n`;
+    });
+  }
+
+  // Screenshots
+  if (meeting.screenshots && meeting.screenshots.length > 0) {
+    markdown += `## 📸 Screenshots & Analysis (${meeting.screenshots.length})\n\n`;
+    meeting.screenshots.forEach((ss, idx) => {
+      const time = new Date(ss.timestamp).toLocaleString();
+      markdown += `### Screenshot ${idx + 1}\n`;
+      markdown += `**Time:** ${time}\n\n`;
+      if (ss.analysis) {
+        markdown += `**Analysis:**\n${ss.analysis}\n\n`;
+      }
+      markdown += `---\n\n`;
+    });
+  }
+
+  markdown += `\n\n---\n`;
+  markdown += `*Exported from MeetMate on ${new Date().toLocaleString()}*\n`;
+
+  // Copy to clipboard
+  try {
+    await navigator.clipboard.writeText(markdown);
+    status.textContent = `✅ Markdown copied to clipboard!`;
+    status.style.background = "#e8f5e9";
+    status.style.color = "#2e7d32";
+    console.log("✅ [EXPORT] Markdown copied to clipboard");
+
+    setTimeout(() => {
+      status.textContent = "";
+      status.style.background = "#e8f0fe";
+      status.style.color = "#1a73e8";
+    }, 3000);
+
+  } catch (err) {
+    console.error("❌ [EXPORT] Failed to copy:", err);
+    status.textContent = `❌ Failed to copy: ${err.message}`;
+    status.style.background = "#fce8e6";
+    status.style.color = "#d93025";
+  }
+}
+
+// Export meeting as PDF
+function exportMeetingAsPDF(meeting) {
+  console.log("📄 [EXPORT] Exporting as PDF:", meeting.meetingId);
+
+  const startDate = new Date(meeting.startTime);
+  const endDate = meeting.endTime ? new Date(meeting.endTime) : null;
+  const duration = endDate
+    ? Math.round((endDate - startDate) / 60000) + " minutes"
+    : "Ongoing";
+
+  // Create a printable HTML document
+  const printWindow = window.open('', '_blank');
+
+  let html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Meeting ${meeting.meetingId} - ${startDate.toLocaleDateString()}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    h1 {
+      color: #1a73e8;
+      border-bottom: 3px solid #1a73e8;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #0d47a1;
+      margin-top: 30px;
+      border-bottom: 2px solid #e0e0e0;
+      padding-bottom: 5px;
+    }
+    h3 {
+      color: #666;
+      margin-top: 20px;
+    }
+    .meta {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+    .meta strong {
+      color: #1a73e8;
+    }
+    .caption {
+      background: #f9f9f9;
+      padding: 10px;
+      margin: 10px 0;
+      border-left: 3px solid #1a73e8;
+    }
+    .timestamp {
+      color: #666;
+      font-size: 0.9em;
+      font-weight: bold;
+    }
+    .screenshot-analysis {
+      background: #f5f5f5;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 5px;
+    }
+    .footer {
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid #e0e0e0;
+      text-align: center;
+      color: #999;
+      font-size: 0.9em;
+    }
+    @media print {
+      body {
+        margin: 0;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>🧠 Meeting: ${meeting.meetingId}</h1>
+
+  <div class="meta">
+    <p><strong>Date:</strong> ${startDate.toLocaleDateString()} at ${startDate.toLocaleTimeString()}</p>
+    <p><strong>Duration:</strong> ${duration}</p>
+    <p><strong>Status:</strong> ${endDate ? "Completed" : "Ongoing"}</p>
+  </div>
+`;
+
+  // Notes
+  if (meeting.notes) {
+    html += `
+  <h2>📝 Meeting Notes</h2>
+  <p>${meeting.notes.replace(/\n/g, '<br>')}</p>
+`;
+  }
+
+  // Actionables
+  if (meeting.actionables) {
+    html += `
+  <h2>✅ Actionable Items</h2>
+  <p>${meeting.actionables.replace(/\n/g, '<br>')}</p>
+`;
+  }
+
+  // Summary
+  if (meeting.summary) {
+    html += `
+  <h2>📊 Meeting Summary (${meeting.summary.type})</h2>
+  <p>${meeting.summary.content.replace(/\n/g, '<br>')}</p>
+  <p style="color: #666; font-size: 0.9em; font-style: italic;">
+    Generated: ${new Date(meeting.summary.generatedAt).toLocaleString()} |
+    Based on ${meeting.summary.captionCount} captions
+  </p>
+`;
+  }
+
+  // Captions
+  if (meeting.captions && meeting.captions.length > 0) {
+    html += `
+  <h2>💬 Live Captions (${meeting.captions.length})</h2>
+`;
+    meeting.captions.forEach(caption => {
+      const time = new Date(caption.timestamp).toLocaleTimeString();
+      html += `
+  <div class="caption">
+    <span class="timestamp">[${time}]</span> ${caption.simplified || caption.original}
+  </div>
+`;
+    });
+  }
+
+  // Screenshots
+  if (meeting.screenshots && meeting.screenshots.length > 0) {
+    html += `
+  <h2>📸 Screenshots & Analysis (${meeting.screenshots.length})</h2>
+`;
+    meeting.screenshots.forEach((ss, idx) => {
+      const time = new Date(ss.timestamp).toLocaleString();
+      html += `
+  <div class="screenshot-analysis">
+    <h3>Screenshot ${idx + 1}</h3>
+    <p><strong>Time:</strong> ${time}</p>
+    ${ss.analysis ? `<p><strong>Analysis:</strong><br>${ss.analysis.replace(/\n/g, '<br>')}</p>` : ''}
+  </div>
+`;
+    });
+  }
+
+  html += `
+  <div class="footer">
+    <p>Exported from MeetMate on ${new Date().toLocaleString()}</p>
+    <p>Generated with MeetMate - AI Meeting Assistant</p>
+  </div>
+</body>
+</html>
+`;
+
+  printWindow.document.write(html);
+  printWindow.document.close();
+
+  // Wait for content to load, then trigger print dialog
+  setTimeout(() => {
+    printWindow.print();
+    console.log("✅ [EXPORT] PDF print dialog opened");
+  }, 250);
+
+  status.textContent = `📄 PDF export ready - Use browser print dialog to save as PDF`;
+  status.style.background = "#e8f0fe";
+  status.style.color = "#1a73e8";
+
+  setTimeout(() => {
+    status.textContent = "";
+  }, 5000);
 }
 
 // Initialize
