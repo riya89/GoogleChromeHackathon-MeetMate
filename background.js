@@ -129,8 +129,9 @@ chrome.runtime.onMessage.addListener(async (message, sender) => {
   }
 });
 
-// Listen for side panel queries about current meeting
+// Listen for messages
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Handle side panel queries about current meeting
   if (message.action === "getMeetingId") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]) {
@@ -144,11 +145,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           meetingTabs.set(tabId, urlMeetingId);
         }
 
-        sendResponse({ meetingId: meetingId });
+        sendResponse({
+          meetingId: meetingId,
+          tabId: tabId
+        });
       } else {
-        sendResponse({ meetingId: null });
+        sendResponse({ meetingId: null, tabId: null });
       }
     });
     return true; // Keep channel open for async response
+  }
+
+  // Handle new captions from content script
+  if (message.action === "newCaption") {
+    console.log("📝 Caption received from content script:", message.caption.text);
+
+    // Forward to side panel
+    chrome.runtime.sendMessage({
+      action: "captionFromMeet",
+      caption: message.caption
+    }).catch(err => {
+      // Side panel might not be open, that's OK
+      console.log("Side panel not available:", err.message);
+    });
+
+    sendResponse({ success: true });
+    return true;
   }
 });

@@ -1,4 +1,8 @@
 //last updated
+console.log("=== 🚀 MEETMATE LOADING ===");
+console.log("Script loaded at:", new Date().toLocaleTimeString());
+console.log("Current URL:", window.location.href);
+
 const status = document.getElementById("status");
 const meetingIdDisplay = document.getElementById("meetingIdDisplay");
 const waitingMessage = document.getElementById("waitingMessage");
@@ -46,6 +50,7 @@ let rewriterSession;
 let translatorSession;
 let summarySession; // New: for meeting summarization
 let currentMeetingId = null;
+let currentMeetTabId = null; // Track the Meet tab ID for audio capture
 let checkInterval = null;
 let saveTimeout = null;
 let currentMeetingData = null;
@@ -54,11 +59,8 @@ let isAnalyzing = false;
 let isGeneratingSummary = false; // Track summary generation state
 
 // Caption-related variables
-let mediaRecorder = null;
-let audioChunks = [];
-let isRecording = false;
-let isTranslating = false;
-let captionInterval = null;
+let isCaptionsEnabled = false;
+let captionSimplificationEnabled = true; // Auto-simplify captions by default
 
 // Storage helper functions
 async function saveMeetingData(meetingId, data) {
@@ -404,183 +406,85 @@ notesField.addEventListener("input", () => {
   saveTimeout = setTimeout(saveCurrentMeeting, 1000);
 });
 
-// Caption functionality
-async function startCaptions() {
-  if (isRecording) return;
-  
-  try {
-    captionStatus.textContent = "🎤 Requesting microphone...";
-    
-    // Request tab audio from the active Meet tab
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    if (!tab.url.includes("meet.google.com")) {
-      captionStatus.textContent = "⚠️ Please open Google Meet first";
-      return;
-    }
-    
-    // Get tab audio stream
-    const streamId = await chrome.tabCapture.getMediaStreamId({
-      targetTabId: tab.id
-    });
-    
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        mandatory: {
-          chromeMediaSource: 'tab',
-          chromeMediaSourceId: streamId
-        }
-      }
-    });
-    
-    isRecording = true;
-    startCaptionBtn.disabled = true;
-    stopCaptionBtn.disabled = false;
-    translateBtn.disabled = false;
-    captionStatus.textContent = "🎤 Recording...";
-    startCaptionBtn.classList.add("recording");
-    
-    // Process audio in chunks every 5 seconds
-    mediaRecorder = new MediaRecorder(stream, {
-      mimeType: 'audio/webm'
-    });
-    
-    audioChunks = [];
-    
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        audioChunks.push(event.data);
-      }
-    };
-    
-    mediaRecorder.onstop = async () => {
-      if (audioChunks.length > 0) {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        await processAudioChunk(audioBlob);
-        audioChunks = [];
-      }
-    };
-    
-    mediaRecorder.start();
-    
-    // Process every 5 seconds
-    captionInterval = setInterval(async () => {
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        mediaRecorder.stop();
-        setTimeout(() => {
-          if (isRecording) {
-            audioChunks = [];
-            mediaRecorder.start();
-          }
-        }, 100);
-      }
-    }, 5000);
-    
-  } catch (err) {
-    console.error("Caption error:", err);
-    captionStatus.textContent = `⚠️ Failed: ${err.message}`;
-    resetCaptionUI();
+// Caption functionality - NEW APPROACH: Scrape from Meet's built-in captions
+function enableCaptions() {
+  console.log("📝 [CAPTION] Enabling caption capture");
+
+  if (isCaptionsEnabled) {
+    console.log("⚠️ [CAPTION] Already enabled");
+    return;
   }
+
+  isCaptionsEnabled = true;
+  startCaptionBtn.disabled = true;
+  stopCaptionBtn.disabled = false;
+  startCaptionBtn.classList.add("recording");
+
+  captionStatus.innerHTML = `
+    ✅ Listening for captions<br>
+    <small style="color: #666;">Enable captions in Meet (CC button) if not visible</small>
+  `;
+
+  console.log("✅ [CAPTION] Caption capture enabled. Waiting for captions from Meet...");
 }
 
-async function processAudioChunk(audioBlob) {
-  try {
-    // Note: Chrome's Prompt API with audio is experimental
-    // For now, we'll use Web Speech API as a fallback
-    // In production, you'd use the Prompt API when available
-    
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    
-    recognition.onresult = async (event) => {
-      const transcript = event.results[0][0].transcript;
-      console.log("📝 Transcript:", transcript);
-      
-      // Simplify using Rewriter API
-      let simplified = transcript;
-      
-      if (rewriterSession) {
-        try {
-          simplified = await rewriterSession.rewrite(transcript, {
-            tone: "more-casual",
-            length: "shorter"
-          });
-        } catch (err) {
-          console.error("Rewriter error:", err);
-        }
-      }
-      
-      // Translate if enabled
-      if (isTranslating && translatorSession) {
-        try {
-          simplified = await translatorSession.translate(simplified);
-        } catch (err) {
-          console.error("Translation error:", err);
-        }
-      }
-      
-      await addCaption(transcript, simplified);
-    };
-    
-    recognition.onerror = (event) => {
-      console.error("Recognition error:", event.error);
-    };
-    
-    // Convert blob to audio for recognition
-    const audioUrl = URL.createObjectURL(audioBlob);
-    const audio = new Audio(audioUrl);
-    
-    recognition.start();
-    audio.play();
-    
-    setTimeout(() => {
-      recognition.stop();
-      URL.revokeObjectURL(audioUrl);
-    }, 5000);
-    
-  } catch (err) {
-    console.error("Audio processing error:", err);
-  }
-}
+function disableCaptions() {
+  console.log("📝 [CAPTION] Disabling caption capture");
 
-function stopCaptions() {
-  isRecording = false;
-  
-  if (mediaRecorder && mediaRecorder.state !== "inactive") {
-    mediaRecorder.stop();
-    mediaRecorder.stream.getTracks().forEach(track => track.stop());
-  }
-  
-  if (captionInterval) {
-    clearInterval(captionInterval);
-    captionInterval = null;
-  }
-  
-  resetCaptionUI();
-  captionStatus.textContent = "✅ Recording stopped";
-}
-
-function resetCaptionUI() {
+  isCaptionsEnabled = false;
   startCaptionBtn.disabled = false;
   stopCaptionBtn.disabled = true;
-  translateBtn.disabled = true;
   startCaptionBtn.classList.remove("recording");
-  isRecording = false;
+
+  captionStatus.textContent = "Caption capture stopped";
+
+  console.log("✅ [CAPTION] Caption capture disabled");
 }
 
-function toggleTranslation() {
-  isTranslating = !isTranslating;
+function toggleSimplification() {
+  captionSimplificationEnabled = !captionSimplificationEnabled;
 
-  if (isTranslating) {
+  if (captionSimplificationEnabled) {
     translateBtn.style.background = "#34a853";
-    translateBtn.textContent = "🌐 Translating...";
-    captionStatus.textContent = "🌐 Translation enabled";
+    translateBtn.textContent = "✨ Simplifying";
+    console.log("✅ [CAPTION] Caption simplification enabled");
   } else {
     translateBtn.style.background = "#1a73e8";
-    translateBtn.textContent = "🌐 Translate";
-    captionStatus.textContent = "🎤 Recording...";
+    translateBtn.textContent = "✨ Simplify";
+    console.log("⚠️ [CAPTION] Caption simplification disabled");
   }
+}
+
+// Process caption from Meet
+async function processCaptionFromMeet(captionText) {
+  if (!isCaptionsEnabled || !currentMeetingData) {
+    console.log("⚠️ [CAPTION] Ignoring caption (disabled or no meeting)");
+    return;
+  }
+
+  console.log("📝 [CAPTION] Processing caption:", captionText);
+
+  let simplifiedText = captionText;
+
+  // Simplify using AI if enabled
+  if (captionSimplificationEnabled && textSession) {
+    try {
+      console.log("✨ [CAPTION] Simplifying with AI...");
+
+      const prompt = `Simplify this meeting caption to be clearer and easier to understand. Keep it concise (1-2 sentences max). Original: "${captionText}"`;
+
+      simplifiedText = await textSession.prompt(prompt);
+      console.log("✅ [CAPTION] Simplified:", simplifiedText);
+
+    } catch (err) {
+      console.error("❌ [CAPTION] Simplification failed:", err);
+      // Use original if simplification fails
+      simplifiedText = captionText;
+    }
+  }
+
+  // Add to meeting data
+  await addCaption(captionText, simplifiedText);
 }
 
 // Meeting Summary Generation
@@ -656,23 +560,30 @@ Meeting transcript:\n${transcript}`
 
 // Handle summary button click
 async function handleSummaryGeneration(type) {
+  console.log(`📊 [SUMMARY] ${type} summary requested`);
+
   if (!currentMeetingId) {
+    console.error("❌ [SUMMARY] No active meeting");
     summaryStatus.textContent = "⚠️ No active meeting";
     summaryStatus.style.color = "#d93025";
     return;
   }
 
   if (!summarySession) {
+    console.error("❌ [SUMMARY] Summary session not ready");
     summaryStatus.textContent = "⚠️ Summary session not ready. Please wait...";
     summaryStatus.style.color = "#d93025";
     return;
   }
 
   if (isGeneratingSummary) {
+    console.log("⚠️ [SUMMARY] Already generating");
     summaryStatus.textContent = "⏳ Already generating summary...";
     summaryStatus.style.color = "#666";
     return;
   }
+
+  console.log("📊 [SUMMARY] All checks passed, generating...");
 
   // Disable all summary buttons
   const allSummaryBtns = [summaryQuickBtn, summaryComprehensiveBtn, summaryActionsBtn, summaryDecisionsBtn, summaryTopicsBtn];
@@ -703,49 +614,74 @@ async function handleSummaryGeneration(type) {
 
 // Check for meeting ID
 async function checkMeetingStatus() {
+  console.log("🔍 [CHECK] Checking meeting status...");
   try {
     const response = await chrome.runtime.sendMessage({ action: "getMeetingId" });
+    console.log("🔍 [CHECK] Response:", response);
+
     if (response && response.meetingId) {
+      console.log("✅ [CHECK] Meeting detected:", response.meetingId, "Tab:", response.tabId);
+
       if (currentMeetingId !== response.meetingId) {
-        activateMeeting(response.meetingId);
+        console.log("🆕 [CHECK] New meeting, activating...");
+        activateMeeting(response.meetingId, response.tabId);
+      } else if (response.tabId !== currentMeetTabId) {
+        console.log("🔄 [CHECK] Tab ID changed:", response.tabId);
+        currentMeetTabId = response.tabId;
+      } else {
+        console.log("✅ [CHECK] Meeting already active");
       }
     } else {
+      console.log("⚠️ [CHECK] No meeting detected");
       if (currentMeetingId !== null) {
+        console.log("🏁 [CHECK] Ending current meeting");
         await endCurrentMeeting();
         showWaitingState();
       }
     }
   } catch (err) {
-    console.error("Failed to get meeting ID:", err);
+    console.error("❌ [CHECK] Failed to get meeting ID:", err);
   }
 }
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message.action === "meetingStarted" && message.meetingId) {
-    activateMeeting(message.meetingId);
+    activateMeeting(message.meetingId, message.tabId);
+  }
+
+  // Receive captions from content script (via background)
+  if (message.action === "captionFromMeet" && message.caption) {
+    console.log("📥 [CAPTION] Received from Meet:", message.caption.text);
+    processCaptionFromMeet(message.caption.text);
   }
 });
 
-async function activateMeeting(meetingId) {
+async function activateMeeting(meetingId, tabId) {
+  console.log("🎯 [ACTIVATE] Activating meeting:", meetingId, "Tab:", tabId);
+
   currentMeetingId = meetingId;
+  currentMeetTabId = tabId; // Store the tab ID
+
+  console.log("🎯 [ACTIVATE] Setting UI...");
   meetingIdDisplay.innerHTML = `📋 Meeting ID: <strong>${meetingId}</strong>`;
   waitingMessage.style.display = "none";
   featuresContainer.style.display = "flex";
-  
+
+  console.log("🎯 [ACTIVATE] Initializing meeting data...");
   await initCurrentMeeting(meetingId);
-  
+
   const storageInfo = await getStorageUsage();
-  console.log(`💾 Storage: ${storageInfo.percentage}% used`);
-  
-  console.log("✅ Meeting activated:", meetingId);
+  console.log(`💾 [ACTIVATE] Storage: ${storageInfo.percentage}% used`);
+
+  console.log("✅ [ACTIVATE] Meeting activated successfully!");
 }
 
 async function endCurrentMeeting() {
   if (!currentMeetingId || !currentMeetingData) return;
 
-  // Stop captions if recording
-  if (isRecording) {
-    stopCaptions();
+  // Stop captions if enabled
+  if (isCaptionsEnabled) {
+    disableCaptions();
   }
 
   // Auto-generate comprehensive summary if captions exist and no summary yet
@@ -783,10 +719,17 @@ function showWaitingState() {
   waitingMessage.style.display = "block";
   featuresContainer.style.display = "none";
   currentMeetingId = null;
+  currentMeetTabId = null;
 }
 
 async function initSessions() {
   try {
+    // Check if LanguageModel API is available
+    if (typeof LanguageModel === 'undefined') {
+      throw new Error("LanguageModel API not available");
+    }
+
+    console.log("Creating text session...");
     textSession = await LanguageModel.create({
       initialPrompts: [
         {
@@ -795,7 +738,9 @@ async function initSessions() {
         }
       ]
     });
+    console.log("✅ Text session ready");
 
+    console.log("Creating image session (multimodal)...");
     imageSession = await LanguageModel.create({
       initialPrompts: [
         {
@@ -803,43 +748,49 @@ async function initSessions() {
           content: "You are a meeting analyst who interprets screenshots and extracts important discussion points and follow-up actions."
         }
       ],
-      expectedInputs: [{ type: "image" }]
+      multimodal: true
     });
+    console.log("✅ Image session ready");
 
     // Initialize Summary Session for meeting summarization
-    try {
-      summarySession = await LanguageModel.create({
-        initialPrompts: [
-          {
-            role: "system",
-            content: "You are an expert meeting summarizer. You analyze meeting transcripts and create clear, concise, and well-structured summaries that highlight key discussion points, decisions, action items, and important topics. Format your summaries with proper structure using markdown when appropriate."
-          }
-        ]
-      });
-      console.log("✅ Summary session ready");
-    } catch (err) {
-      console.warn("⚠️ Summary session not available:", err);
-    }
+    console.log("Creating summary session...");
+    summarySession = await LanguageModel.create({
+      initialPrompts: [
+        {
+          role: "system",
+          content: "You are an expert meeting summarizer. You analyze meeting transcripts and create clear, concise, and well-structured summaries that highlight key discussion points, decisions, action items, and important topics. Format your summaries with proper structure using markdown when appropriate."
+        }
+      ]
+    });
+    console.log("✅ Summary session ready");
 
     // Initialize Rewriter API
     try {
-      rewriterSession = await ai.rewriter.create({
-        sharedContext: "Meeting conversation transcript"
-      });
-      console.log("✅ Rewriter API ready");
+      if (typeof ai !== 'undefined' && ai.rewriter) {
+        rewriterSession = await ai.rewriter.create({
+          sharedContext: "Meeting conversation transcript"
+        });
+        console.log("✅ Rewriter API ready");
+      } else {
+        console.warn("⚠️ Rewriter API not available (ai.rewriter not found)");
+      }
     } catch (err) {
-      console.warn("⚠️ Rewriter API not available:", err);
+      console.warn("⚠️ Rewriter API error:", err);
     }
 
     // Initialize Translator API (example for Hindi)
     try {
-      translatorSession = await translation.createTranslator({
-        sourceLanguage: 'en',
-        targetLanguage: 'hi'
-      });
-      console.log("✅ Translator API ready");
+      if (typeof translation !== 'undefined' && translation.createTranslator) {
+        translatorSession = await translation.createTranslator({
+          sourceLanguage: 'en',
+          targetLanguage: 'hi'
+        });
+        console.log("✅ Translator API ready");
+      } else {
+        console.warn("⚠️ Translator API not available (translation not found)");
+      }
     } catch (err) {
-      console.warn("⚠️ Translator API not available:", err);
+      console.warn("⚠️ Translator API error:", err);
     }
 
     status.textContent = "✅ Prompt API ready.";
@@ -1033,9 +984,17 @@ function createMeetingCard(meeting) {
 }
 
 // Initialize
+console.log("=== 🎬 INITIALIZATION START ===");
+console.log("🔄 [INIT] Starting meeting status check...");
 checkMeetingStatus();
+
+console.log("🤖 [INIT] Starting AI sessions...");
 initSessions();
+
+console.log("⏰ [INIT] Setting up polling interval (2s)...");
 checkInterval = setInterval(checkMeetingStatus, 2000);
+
+console.log("=== ✅ INITIALIZATION COMPLETE ===");
 
 window.addEventListener('focus', checkMeetingStatus);
 document.addEventListener('visibilitychange', () => {
@@ -1125,9 +1084,9 @@ captureBtn.addEventListener("click", async () => {
 });
 
 // Feature 3: Caption controls
-startCaptionBtn.addEventListener("click", startCaptions);
-stopCaptionBtn.addEventListener("click", stopCaptions);
-translateBtn.addEventListener("click", toggleTranslation);
+startCaptionBtn.addEventListener("click", enableCaptions);
+stopCaptionBtn.addEventListener("click", disableCaptions);
+translateBtn.addEventListener("click", toggleSimplification);
 
 // Feature 4: Summary controls
 summaryQuickBtn.addEventListener("click", () => handleSummaryGeneration('quick'));
@@ -1163,5 +1122,5 @@ closeModal.addEventListener("click", () => {
 
 window.addEventListener('unload', () => {
   if (checkInterval) clearInterval(checkInterval);
-  if (isRecording) stopCaptions();
+  if (isCaptionsEnabled) disableCaptions();
 });
