@@ -31,7 +31,7 @@ const stopCaptionBtn = document.getElementById("stopCaptionBtn");
 const translateBtn = document.getElementById("translateBtn");
 const captionContainer = document.getElementById("captionContainer");
 const captionStatus = document.getElementById("captionStatus");
-let captionSimplificationEnabled = false; // 🔧 FIXED: Added missing variable
+let captionSimplificationEnabled = true; // 🔧 FIXED: Added missing variable
 
 // Caption control elements - UPDATED
 const simplifyToggle = document.getElementById("simplifyToggle");
@@ -434,6 +434,7 @@ function enableCaptions() {
   languageSelect.disabled = false;
   startCaptionBtn.classList.add("recording");
 
+  updateSimplificationButtonUI(); // Add this line
   updateCaptionModeStatus();
 
   console.log("✅ [CAPTION] Caption capture enabled");
@@ -458,18 +459,18 @@ function disableCaptions() {
 // 🔧 NEW: Toggle simplification
 function toggleSimplification() {
   captionSimplificationEnabled = !captionSimplificationEnabled;
+  updateSimplificationButtonUI(); // Call the new function
+  updateCaptionModeStatus();
+}
 
+function updateSimplificationButtonUI() {
   if (captionSimplificationEnabled) {
     simplifyToggle.style.background = "#34a853";
     simplifyToggle.textContent = "✨ Simplifying ON";
-    console.log("✅ [CAPTION] Simplification enabled");
   } else {
     simplifyToggle.style.background = "#5f6368";
     simplifyToggle.textContent = "✨ Simplify OFF";
-    console.log("⚠️ [CAPTION] Simplification disabled");
   }
-
-  updateCaptionModeStatus();
 }
 
 // 🔧 NEW: Toggle translation
@@ -1689,6 +1690,11 @@ document.addEventListener('DOMContentLoaded', () => {
     langSelect.addEventListener('change', (e) => {
       changeLanguage(e.target.value);
     });
+  }
+
+  // Add this line to set initial UI state for simplification button
+  if (simplifyToggle) {
+    updateSimplificationButtonUI();
   }
 });
 
