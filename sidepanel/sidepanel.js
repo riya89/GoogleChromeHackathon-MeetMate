@@ -40,10 +40,7 @@ const languageSelect = document.getElementById("languageSelect");
 const captionModeStatus = document.getElementById("captionModeStatus");
 
 // Feature 4 elements (Summary)
-const summaryQuickBtn = document.getElementById("summaryQuickBtn");
-const summaryComprehensiveBtn = document.getElementById("summaryComprehensiveBtn");
-const summaryDecisionsBtn = document.getElementById("summaryDecisionsBtn");
-const summaryTopicsBtn = document.getElementById("summaryTopicsBtn");
+const generateSummaryBtn = document.getElementById("generateSummaryBtn");
 const summaryStatus = document.getElementById("summaryStatus");
 const summaryOutput = document.getElementById("summaryOutput");
 
@@ -709,60 +706,62 @@ async function addCaption(originalText, simplifiedText, translatedText = null) {
 }
 
 // Meeting Summary Generation
-async function generateMeetingSummary(type = 'comprehensive') {
+async function generateMeetingSummary() { // Removed 'type' parameter
   if (!currentMeetingData || !summarySession) {
     return { success: false, error: "Meeting data or summary session not available" };
   }
 
   const captions = currentMeetingData.captions || [];
+  const notes = currentMeetingData.notes || "";
+  const screenshots = currentMeetingData.screenshots || [];
 
-  if (captions.length === 0) {
-    return { success: false, error: "No captions available. Please record some captions first." };
+  if (captions.length === 0 && notes === "" && screenshots.length === 0) {
+    return { success: false, error: "No meeting data (captions, notes, or screenshots) available to summarize." };
   }
 
   isGeneratingSummary = true;
 
   try {
-    const transcript = captions
-      .map(c => c.simplified || c.original)
-      .join(' ');
+    let fullContext = "Generate a comprehensive meeting summary based on the following information:\n\n";
 
-    const prompts = {
-      quick: `Provide a brief 3-5 bullet point summary of the key points from this meeting transcript:
+    if (notes) {
+      fullContext += "--- Meeting Notes ---\n" + notes + "\n\n";
+    }
 
-${transcript}`,
+    if (captions.length > 0) {
+      const transcript = captions
+        .map(c => c.simplified || c.original)
+        .join(' ');
+      fullContext += "--- Meeting Transcript (from captions) ---\n" + transcript + "\n\n";
+    }
 
-      comprehensive: `Create a comprehensive meeting summary with the following sections:
-1. **Overview**: Brief description of the meeting
-2. **Key Discussion Points**: Main topics discussed (bullet points)
-3. **Decisions Made**: Any decisions or conclusions reached
-4. **Action Items**: Tasks and follow-ups identified
-5. **Important Mentions**: Notable concerns or highlights
+    if (screenshots.length > 0) {
+      fullContext += "--- Screenshot Analyses ---\n";
+      screenshots.forEach((ss, index) => {
+        if (ss.analysis) {
+          fullContext += `Screenshot ${index + 1} Analysis: ${ss.analysis}\n`;
+        }
+      });
+      fullContext += "\n";
+    }
 
-Meeting transcript:
-${transcript}`,
+    fullContext += `Please provide a well-formatted summary with the following sections:\n`;
+    fullContext += `1. **Overview**: A brief description of the meeting.\n`;
+    fullContext += `2. **Key Discussion Points**: Main topics discussed (bullet points).\n`;
+    fullContext += `3. **Decisions Made**: Any conclusions or agreements reached.\n`;
+    fullContext += `4. **Action Items**: Tasks and follow-ups identified.\n`;
+    fullContext += `5. **Important Mentions**: Any other notable concerns or highlights.\n\n`;
+    fullContext += `Ensure the summary is clear, concise, and easy to read.`;
 
-      decisions: `List ONLY the key decisions, conclusions, and agreements made during this meeting. Be specific and concise.
 
-Meeting transcript:
-${transcript}`,
-
-      topics: `Identify and list the main topics and themes discussed in this meeting, with a brief description of each.
-
-Meeting transcript:
-${transcript}`
-    };
-
-    const prompt = prompts[type] || prompts.comprehensive;
-
-    const summaryText = await summarySession.prompt(prompt);
+    const summaryText = await summarySession.prompt(fullContext);
 
     const summaryData = {
-      type: type,
+      type: 'comprehensive', // Always comprehensive now
       content: summaryText,
       generatedAt: new Date().toISOString(),
       captionCount: captions.length,
-      transcriptLength: transcript.length
+      transcriptLength: captions.map(c => c.simplified || c.original).join(' ').length
     };
 
     currentMeetingData.summary = summaryData;
@@ -779,7 +778,7 @@ ${transcript}`
 }
 
 // Handle summary button click
-async function handleSummaryGeneration(type) {
+async function handleSummaryGeneration() {
   console.log(`📊 [SUMMARY] ${type} summary requested`);
 
   if (!currentMeetingId) {
@@ -803,14 +802,14 @@ async function handleSummaryGeneration(type) {
     return;
   }
 
-  const allSummaryBtns = [summaryQuickBtn, summaryComprehensiveBtn, summaryDecisionsBtn, summaryTopicsBtn];
+  const allSummaryBtns = [generateSummaryBtn];
   allSummaryBtns.forEach(btn => btn.disabled = true);
 
   summaryStatus.textContent = `⏳ Generating ${type} summary...`;
   summaryStatus.style.color = "#1a73e8";
   summaryOutput.style.display = "none";
 
-  const result = await generateMeetingSummary(type);
+  const result = await generateMeetingSummary();
 
   allSummaryBtns.forEach(btn => btn.disabled = false);
 
@@ -1214,7 +1213,7 @@ function createMeetingCard(meeting) {
 
       ${meeting.summary ? `
         <div class="detail-section">
-          <h4>📊 Meeting Summary (${meeting.summary.type})</h4>
+          <h4>📊 Meeting Summary</h4>
           <div class="detail-content" style="white-space: pre-wrap;">${meeting.summary.content}</div>
           <div style="font-size: 11px; color: #666; margin-top: 8px;">
             Generated: ${new Date(meeting.summary.generatedAt).toLocaleString()} |
@@ -1694,10 +1693,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Feature 4: Summary controls
-summaryQuickBtn.addEventListener("click", () => handleSummaryGeneration('quick'));
-summaryComprehensiveBtn.addEventListener("click", () => handleSummaryGeneration('comprehensive'));
-summaryDecisionsBtn.addEventListener("click", () => handleSummaryGeneration('decisions'));
-summaryTopicsBtn.addEventListener("click", () => handleSummaryGeneration('topics'));
+generateSummaryBtn.addEventListener("click", () => handleSummaryGeneration('comprehensive'));
 
 // Modal handling
 async function openModal(index) {
