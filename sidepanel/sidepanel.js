@@ -1526,24 +1526,21 @@ function exportMeetingAsPDF(meeting) {
   if (meeting.notes) {
     html += `
   <h2>📝 Meeting Notes</h2>
-  <p>${meeting.notes.replace(/
-/g, '<br>')}</p>
+            <p>${meeting.notes.replace(/\n/g, '<br>')}</p>/g, '<br>')}</p>
 `;
   }
 
   if (meeting.actionables) {
     html += `
   <h2>✅ Actionable Items</h2>
-  <p>${meeting.actionables.replace(/
-/g, '<br>')}</p>
+            <p>${meeting.actionables.replace(/\n/g, '<br>')}</p>/g, '<br>')}</p>
 `;
   }
 
   if (meeting.summary) {
     html += `
   <h2>📊 Meeting Summary (${meeting.summary.type})</h2>
-  <p>${meeting.summary.content.replace(/
-/g, '<br>')}</p>
+            <p>${meeting.summary.content.replace(/\n/g, '<br>')}</p>/g, '<br>')}</p>
   <p style="color: #666; font-size: 0.9em; font-style: italic;">
     Generated: ${new Date(meeting.summary.generatedAt).toLocaleString()} |
     Based on ${meeting.summary.captionCount} captions
@@ -1575,8 +1572,7 @@ function exportMeetingAsPDF(meeting) {
   <div class="screenshot-analysis">
     <h3>Screenshot ${idx + 1}</h3>
     <p><strong>Time:</strong> ${time}</p>
-    ${ss.analysis ? `<p><strong>Analysis:</strong><br>${ss.analysis.replace(/
-/g, '<br>')}</p>` : ''}
+    ${ss.analysis ? `<p><strong>Analysis:</strong><br>${ss.analysis.replace(/\n/g, '<br>')}</p>` : ''}
   </div>
 `;
     });
