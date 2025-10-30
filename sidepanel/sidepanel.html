@@ -444,101 +444,125 @@
       </div>
 
       <div id="featuresContainer" style="display: none;">
-        <!-- Feature 1: Notes -->
-        <div class="feature-section">
-          <h3>📝 Extract Actionable Items</h3>
-          <textarea
-            id="notes"
-            rows="3"
-            placeholder="Paste or type your meeting notes here..."
-          ></textarea>
-          <button id="extractBtn">Extract Actionable Items</button>
-          <div id="output"></div>
+        <!-- FEATURE TOGGLE BAR (single-select segmented controls) - moved INSIDE featuresContainer so it's hidden on welcome -->
+        <div id="featureToggleBar" style="display:flex; gap:8px; padding:12px 16px; align-items:center; background:#fff; border-bottom:1px solid #e8e8e8; flex-shrink:0; overflow-x:auto;">
+          <style>
+            #featureToggleBar .seg-btn {
+              background: #f5f7fb;
+              border: 1px solid #e6eefc;
+              color: #1f2937;
+              padding: 8px 12px;
+              border-radius: 8px;
+              cursor: pointer;
+              font-weight: 600;
+              font-size: 13px;
+              transition: all .12s ease;
+            }
+            #featureToggleBar .seg-btn[aria-pressed="true"] {
+              background: linear-gradient(180deg,#e8f0fe,#d7e9ff);
+              color: #0b5ed7;
+              box-shadow: 0 1px 0 rgba(11,94,215,0.08) inset;
+            }
+          </style>
+
+          <button id="segNotes" class="seg-btn" aria-pressed="true" data-target="notesSection">Notes</button>
+          <button id="segCaptions" class="seg-btn" aria-pressed="false" data-target="captionsSection">Captions</button>
+          <button id="segScreenshots" class="seg-btn" aria-pressed="false" data-target="screenshotsSection">Screenshots</button>
+          <button id="segSummary" class="seg-btn" aria-pressed="false" data-target="summarySection">Summary</button>
         </div>
 
+        <!-- features sections follow -->
+         <!-- Feature 1: Notes -->
+         <div id="notesSection" class="feature-section" style="display:block;">
+           <h3>📝 Extract Actionable Items</h3>
+           <textarea
+             id="notes"
+             rows="3"
+             placeholder="Paste or type your meeting notes here..."
+           ></textarea>
+           <button id="extractBtn">Extract Actionable Items</button>
+           <div id="output"></div>
+         </div>
+
         <!-- Feature 2: Screenshots -->
-        <div class="feature-section scrollable">
+        <div id="screenshotsSection" class="feature-section scrollable" style="display:none;">
           <h3>📸 Meeting Screenshot Analyzer</h3>
           <button id="captureBtn">📸 Capture Screenshot</button>
           <div id="gallery"></div>
         </div>
 
-        <div class="feature-section scrollable">
-  <h3>
-    💬 Live Captions
-    <span id="captionStatus" style="font-size: 12px; color: #666; font-weight: normal;"></span>
-  </h3>
-  
-  <div style="padding: 8px; background: #e8f0fe; border-radius: 6px; margin-bottom: 12px; font-size: 13px;">
-    <strong>📌 How to use:</strong>
-    <ol style="margin: 8px 0 0 20px; padding: 0;">
-      <li>Enable captions in Google Meet (click the <strong>CC</strong> button)</li>
-      <li>Click "Start Captions" below</li>
-      <li>Choose options: Simplify and/or Translate</li>
-      <li>Captions will appear automatically!</li>
-    </ol>
-  </div>
+        <!-- Feature 3: Captions -->
+        <div id="captionsSection" class="feature-section scrollable" style="display:none;">
+          <h3>
+            💬 Live Captions
+            <span id="captionStatus" style="font-size: 12px; color: #666; font-weight: normal;"></span>
+          </h3>
 
-  <!-- Caption controls -->
-  <div class="button-group">
-    <button id="startCaptionBtn">▶️ Start Captions</button>
-    <button id="stopCaptionBtn" disabled>⏹️ Stop</button>
-  </div>
+          <div style="padding: 8px; background: #e8f0fe; border-radius: 6px; margin-bottom: 12px; font-size: 13px;">
+            <strong>📌 How to use:</strong>
+            <ol style="margin: 8px 0 0 20px; padding: 0;">
+              <li>Enable captions in Google Meet (click the <strong>CC</strong> button)</li>
+              <li>Click "Start Captions" below</li>
+              <li>Choose options: Simplify and/or Translate</li>
+              <li>Captions will appear automatically!</li>
+            </ol>
+          </div>
 
-  <!-- Simplification and Translation controls -->
-  <div style="margin-top: 12px; padding: 12px; background: #f9f9f9; border-radius: 8px;">
-    <div style="margin-bottom: 8px; font-size: 13px; font-weight: 600; color: #333;">
-      Caption Options:
-    </div>
-    
-    <div class="button-group">
-      <button id="simplifyToggle" disabled style="background: #5f6368;">
-        ✨ Simplify OFF
-      </button>
-      <button id="translateToggle" disabled style="background: #5f6368;">
-        🌐 Translate OFF
-      </button>
-    </div>
+          <!-- Caption controls -->
+          <div class="button-group">
+            <button id="startCaptionBtn">▶️ Start Captions</button>
+            <button id="stopCaptionBtn" disabled>⏹️ Stop</button>
+          </div>
 
-    <div style="margin-top: 8px;">
-      <label for="languageSelect" style="font-size: 13px; color: #666; display: block; margin-bottom: 4px;">
-        Translation Language:
-      </label>
-      <select id="languageSelect" disabled style="
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        font-size: 13px;
-        background: white;
-      ">
-        <option value="hi">Hindi (हिंदी)</option>
-        <option value="es">Spanish (Español)</option>
-        <option value="fr">French (Français)</option>
-        <option value="de">German (Deutsch)</option>
-        <option value="ja">Japanese (日本語)</option>
-        <option value="zh">Chinese (中文)</option>
-        <option value="ar">Arabic (العربية)</option>
-        <option value="pt">Portuguese (Português)</option>
-      </select>
-    </div>
+          <!-- Simplification and Translation controls -->
+          <div style="margin-top: 12px; padding: 12px; background: #f9f9f9; border-radius: 8px;">
+            <div style="margin-bottom: 8px; font-size: 13px; font-weight: 600; color: #333;">
+              Caption Options:
+            </div>
 
-    <div id="captionModeStatus" style="
-      margin-top: 8px;
-      font-size: 12px;
-      color: #666;
-      font-style: italic;
-    ">
-      Raw captions only
-    </div>
-  </div>
+            <div class="button-group">
+              <button id="simplifyToggle" disabled style="background: #5f6368;">
+                ✨ Simplify OFF
+              </button>
+              <button id="translateToggle" disabled style="background: #5f6368;">
+                🌐 Translate OFF
+              </button>
+            </div>
 
-  <!-- Caption display container -->
-  <div id="captionContainer"></div>
-</div>
+            <div style="margin-top: 8px;">
+              <label for="languageSelect" style="font-size: 13px; color: #666; display: block; margin-bottom: 4px;">
+                Translation Language:
+              </label>
+              <select id="languageSelect" disabled style="
+                width: 100%;
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                font-size: 13px;
+                background: white;
+              ">
+                <option value="hi">Hindi (हिंदी)</option>
+                <option value="es">Spanish (Español)</option>
+                <option value="fr">French (Français)</option>
+                <option value="de">German (Deutsch)</option>
+                <option value="ja">Japanese (日本語)</option>
+                <option value="zh">Chinese (中文)</option>
+                <option value="ar">Arabic (العربية)</option>
+                <option value="pt">Portuguese (Português)</option>
+              </select>
+            </div>
+
+            <div id="captionModeStatus" style="margin-top: 8px; font-size: 12px; color: #666; font-style: italic;">
+              Raw captions only
+            </div>
+          </div>
+
+          <!-- Caption display container -->
+          <div id="captionContainer"></div>
+        </div>
 
         <!-- Feature 4: Meeting Summary -->
-        <div class="feature-section scrollable">
+        <div id="summarySection" class="feature-section scrollable" style="display:none;">
           <h3>📊 Meeting Summary</h3>
           <p style="font-size: 13px; color: #666; margin-bottom: 12px;">
             Generate an AI-powered summary from all captured captions
@@ -557,16 +581,7 @@
 
           <div id="summaryStatus" style="margin-top: 12px; font-size: 13px; color: #666;"></div>
 
-          <div id="summaryOutput" style="
-            margin-top: 12px;
-            padding: 16px;
-            background: #f9f9f9;
-            border-radius: 8px;
-            border-left: 4px solid #1a73e8;
-            display: none;
-            white-space: pre-wrap;
-            line-height: 1.6;
-          "></div>
+          <div id="summaryOutput" style="margin-top: 12px; padding: 16px; background: #f9f9f9; border-radius: 8px; border-left: 4px solid #1a73e8; display: none; white-space: pre-wrap; line-height: 1.6;"></div>
         </div>
 
         <p id="status"></p>
@@ -588,6 +603,76 @@
       <img id="modalImage" />
       <p id="modalAnalysis">Loading analysis...</p>
     </div>
+
+    <script>
+      // Robust initializer for the single-select segmented feature bar.
+      (function () {
+        const sections = ['notesSection', 'captionsSection', 'screenshotsSection', 'summarySection'];
+
+        function showOnly(targetId) {
+          sections.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.style.display = (id === targetId) ? 'block' : 'none';
+          });
+          const segButtons = document.querySelectorAll('#featureToggleBar .seg-btn');
+          segButtons.forEach(btn => btn.setAttribute('aria-pressed', btn.dataset.target === targetId ? 'true' : 'false'));
+        }
+
+        function wireButtons(bar) {
+          if (!bar) return false;
+          const segButtons = Array.from(bar.querySelectorAll('.seg-btn'));
+          if (!segButtons.length) return false;
+
+          segButtons.forEach(btn => {
+            // ensure it's a button and clickable
+            btn.setAttribute('role', 'button');
+            btn.setAttribute('tabindex', '0');
+            btn.type = 'button';
+            btn.addEventListener('click', () => {
+              const t = btn.dataset.target;
+              if (t) showOnly(t);
+            });
+            // keyboard support: Enter/Space
+            btn.addEventListener('keydown', (ev) => {
+              if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault();
+                const t = btn.dataset.target;
+                if (t) showOnly(t);
+              }
+            });
+          });
+
+          // initial selection: prefer aria-pressed="true", fallback to first
+          const active = segButtons.find(b => b.getAttribute('aria-pressed') === 'true') || segButtons[0];
+          if (active) showOnly(active.dataset.target);
+
+          return true;
+        }
+
+        function init() {
+          const bar = document.getElementById('featureToggleBar');
+          if (bar && wireButtons(bar)) return;
+
+          // If bar isn't present yet, observe featuresContainer for when it's added
+          const fc = document.getElementById('featuresContainer');
+          if (!fc) return;
+          const mo = new MutationObserver(() => {
+            const barNow = document.getElementById('featureToggleBar');
+            if (barNow && wireButtons(barNow)) {
+              mo.disconnect();
+            }
+          });
+          mo.observe(fc, { childList: true, subtree: true, attributes: false });
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', init);
+        } else {
+          init();
+        }
+      })();
+    </script>
 
     <script type="module" src="sidepanel.js"></script>
   </body>

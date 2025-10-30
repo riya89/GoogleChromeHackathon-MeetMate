@@ -2332,6 +2332,23 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
+// async function activateMeeting(meetingId, tabId) {
+//   console.log("🎯 [ACTIVATE] Activating meeting:", meetingId);
+
+//   currentMeetingId = meetingId;
+//   currentMeetTabId = tabId;
+
+//   meetingIdDisplay.innerHTML = `📋 Meeting ID: <strong>${meetingId}</strong>`;
+//   waitingMessage.style.display = "none";
+//   featuresContainer.style.display = "flex";
+
+//   await initCurrentMeeting(meetingId);
+
+//   const storageInfo = await getStorageUsage();
+//   console.log(`💾 [ACTIVATE] Storage: ${storageInfo.percentage}% used`);
+
+//   console.log("✅ [ACTIVATE] Meeting activated successfully!");
+// }
 async function activateMeeting(meetingId, tabId) {
   console.log("🎯 [ACTIVATE] Activating meeting:", meetingId);
 
@@ -2344,12 +2361,58 @@ async function activateMeeting(meetingId, tabId) {
 
   await initCurrentMeeting(meetingId);
 
+  // Ensure the segmented feature bar is wired after featuresContainer becomes visible
+  try {
+    setupFeatureToggleBar();
+  } catch (err) {
+    console.warn("⚠️ Failed to setup feature toggle bar:", err);
+  }
+
   const storageInfo = await getStorageUsage();
   console.log(`💾 [ACTIVATE] Storage: ${storageInfo.percentage}% used`);
 
   console.log("✅ [ACTIVATE] Meeting activated successfully!");
 }
+function setupFeatureToggleBar() {
+  const bar = document.getElementById('featureToggleBar');
+  if (!bar) return;
+  if (bar.__segWired) return; // avoid double-wiring
+  const sections = ['notesSection', 'captionsSection', 'screenshotsSection', 'summarySection'];
 
+  function showOnly(targetId) {
+    sections.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.style.display = id === targetId ? 'block' : 'none';
+    });
+    const segButtons = bar.querySelectorAll('.seg-btn');
+    segButtons.forEach(btn => btn.setAttribute('aria-pressed', btn.dataset.target === targetId ? 'true' : 'false'));
+  }
+
+  const segButtons = Array.from(bar.querySelectorAll('.seg-btn'));
+  segButtons.forEach(btn => {
+    btn.setAttribute('role', 'button');
+    btn.setAttribute('tabindex', '0');
+    btn.type = 'button';
+    btn.addEventListener('click', () => {
+      const t = btn.dataset.target;
+      if (t) showOnly(t);
+    });
+    btn.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        const t = btn.dataset.target;
+        if (t) showOnly(t);
+      }
+    });
+  });
+
+  // default: prefer aria-pressed="true", fallback to first button
+  const active = segButtons.find(b => b.getAttribute('aria-pressed') === 'true') || segButtons[0];
+  if (active) showOnly(active.dataset.target);
+
+  bar.__segWired = true;
+}
 async function endCurrentMeeting() {
   if (!currentMeetingId || !currentMeetingData) return;
 
