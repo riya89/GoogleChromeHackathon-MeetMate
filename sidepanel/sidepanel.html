@@ -412,6 +412,14 @@
       .button-group button {
         margin: 0;
       }
+      .caption-translated {
+  font-size: 14px;
+  color: #1a73e8;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #e8f0fe;
+  font-weight: 500;
+}
     </style>
   </head>
   <body>
@@ -455,27 +463,79 @@
           <div id="gallery"></div>
         </div>
 
-        <!-- Feature 3: Live Captions -->
         <div class="feature-section scrollable">
-          <h3>
-            💬 Live Captions
-            <span id="captionStatus" style="font-size: 12px; color: #666; font-weight: normal;"></span>
-          </h3>
-          <div style="padding: 8px; background: #e8f0fe; border-radius: 6px; margin-bottom: 12px; font-size: 13px;">
-            <strong>📌 How to use:</strong>
-            <ol style="margin: 8px 0 0 20px; padding: 0;">
-              <li>Enable captions in Google Meet (click the <strong>CC</strong> button)</li>
-              <li>Click "Start Captions" below</li>
-              <li>Captions will appear here automatically!</li>
-            </ol>
-          </div>
-          <div class="button-group">
-            <button id="startCaptionBtn">▶️ Start Captions</button>
-            <button id="stopCaptionBtn" disabled>⏹️ Stop</button>
-            <button id="translateBtn" disabled>✨ Simplify</button>
-          </div>
-          <div id="captionContainer"></div>
-        </div>
+  <h3>
+    💬 Live Captions
+    <span id="captionStatus" style="font-size: 12px; color: #666; font-weight: normal;"></span>
+  </h3>
+  
+  <div style="padding: 8px; background: #e8f0fe; border-radius: 6px; margin-bottom: 12px; font-size: 13px;">
+    <strong>📌 How to use:</strong>
+    <ol style="margin: 8px 0 0 20px; padding: 0;">
+      <li>Enable captions in Google Meet (click the <strong>CC</strong> button)</li>
+      <li>Click "Start Captions" below</li>
+      <li>Choose options: Simplify and/or Translate</li>
+      <li>Captions will appear automatically!</li>
+    </ol>
+  </div>
+
+  <!-- Caption controls -->
+  <div class="button-group">
+    <button id="startCaptionBtn">▶️ Start Captions</button>
+    <button id="stopCaptionBtn" disabled>⏹️ Stop</button>
+  </div>
+
+  <!-- Simplification and Translation controls -->
+  <div style="margin-top: 12px; padding: 12px; background: #f9f9f9; border-radius: 8px;">
+    <div style="margin-bottom: 8px; font-size: 13px; font-weight: 600; color: #333;">
+      Caption Options:
+    </div>
+    
+    <div class="button-group">
+      <button id="simplifyToggle" disabled style="background: #5f6368;">
+        ✨ Simplify OFF
+      </button>
+      <button id="translateToggle" disabled style="background: #5f6368;">
+        🌐 Translate OFF
+      </button>
+    </div>
+
+    <div style="margin-top: 8px;">
+      <label for="languageSelect" style="font-size: 13px; color: #666; display: block; margin-bottom: 4px;">
+        Translation Language:
+      </label>
+      <select id="languageSelect" disabled style="
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 13px;
+        background: white;
+      ">
+        <option value="hi">Hindi (हिंदी)</option>
+        <option value="es">Spanish (Español)</option>
+        <option value="fr">French (Français)</option>
+        <option value="de">German (Deutsch)</option>
+        <option value="ja">Japanese (日本語)</option>
+        <option value="zh">Chinese (中文)</option>
+        <option value="ar">Arabic (العربية)</option>
+        <option value="pt">Portuguese (Português)</option>
+      </select>
+    </div>
+
+    <div id="captionModeStatus" style="
+      margin-top: 8px;
+      font-size: 12px;
+      color: #666;
+      font-style: italic;
+    ">
+      Raw captions only
+    </div>
+  </div>
+
+  <!-- Caption display container -->
+  <div id="captionContainer"></div>
+</div>
 
         <!-- Feature 4: Meeting Summary -->
         <div class="feature-section scrollable">
