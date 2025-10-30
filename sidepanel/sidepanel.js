@@ -776,50 +776,133 @@ async function generateMeetingSummary(type = 'comprehensive') {
     const prompt = prompts[type] || prompts.comprehensive;
     console.log("📊 [SUMMARY] Prompt length:", prompt.length);
 
-    // call model
-    let rawResponse;
-    try {
-      rawResponse = await summarySession.prompt(prompt);
-      console.log("📊 [SUMMARY] Raw response received (type):", typeof rawResponse, rawResponse && rawResponse.constructor && rawResponse.constructor.name);
-    } catch (err) {
-      console.error("❌ [SUMMARY] prompt() threw:", err);
-      throw err;
-    }
+    // Prepare UI for streaming/fallback
+    summaryOutput.textContent = "";
+    summaryOutput.style.display = "block";
 
-    // Normalize response to string
     let summaryText = "";
-    try {
-      if (typeof rawResponse === "string") {
-        summaryText = rawResponse;
-      } else if (!rawResponse) {
-        summaryText = "";
-      } else if (typeof rawResponse === "object") {
-        // Common shapes: { content }, { text }, { outputText }, { choices: [{ text }] }, array of blocks, etc.
-        if (rawResponse.outputText) {
-          summaryText = rawResponse.outputText;
-        } else if (rawResponse.text) {
-          summaryText = rawResponse.text;
-        } else if (rawResponse.content) {
-          summaryText = rawResponse.content;
-        } else if (Array.isArray(rawResponse.choices) && rawResponse.choices[0]) {
-          summaryText = rawResponse.choices.map(c => c.text || c.content || JSON.stringify(c)).join("\n");
-        } else if (Array.isArray(rawResponse)) {
-          summaryText = rawResponse.map(r => (r.text || r.content || JSON.stringify(r))).join("\n");
-        } else {
-          // Fallback: stringify
-          summaryText = JSON.stringify(rawResponse);
+
+    // If the session supports streaming (async iterator), use it to append partial output
+    if (summarySession && typeof summarySession.stream === 'function') {
+      console.log("📊 [SUMMARY] Using streaming API (summarySession.stream) for incremental output");
+      try {
+        const stream = await summarySession.stream(prompt);
+        for await (const chunk of stream) {
+          if (generationCancelled) {
+            console.log("⚠️ [SUMMARY] Generation cancelled during stream");
+            isGeneratingSummary = false;
+            return { success: false, error: "user_cancelled" };
+          }
+
+          let textChunk = "";
+          try {
+            if (typeof chunk === "string") {
+              textChunk = chunk;
+            } else if (chunk && (chunk.delta || chunk.text || chunk.content)) {
+              textChunk = chunk.delta || chunk.text || chunk.content || "";
+            } else if (typeof chunk === "object") {
+              // Attempt to extract common nested fields
+              if (chunk.choices && chunk.choices[0]) {
+                textChunk = chunk.choices.map(c => c.text || c.content || "").join("");
+              } else if (Array.isArray(chunk)) {
+                textChunk = chunk.map(c => (c.text || c.content || JSON.stringify(c))).join("");
+              } else {
+                textChunk = JSON.stringify(chunk);
+              }
+            } else {
+              textChunk = String(chunk || "");
+            }
+          } catch (normErr) {
+            textChunk = String(chunk);
+          }
+
+          // Append partial chunk to UI and buffer
+          summaryText += textChunk;
+          summaryOutput.textContent = summaryText;
         }
-      } else {
+
+        console.log("✅ [SUMMARY] Stream ended, total length:", summaryText.length);
+      } catch (streamErr) {
+        console.warn("⚠️ [SUMMARY] Streaming failed, falling back to prompt():", streamErr);
+        // Fall back to non-streaming below
+        try {
+          const rawResponse = await summarySession.prompt(prompt);
+          // normalization block (same as non-stream path)
+          if (typeof rawResponse === "string") {
+            summaryText = rawResponse;
+          } else if (!rawResponse) {
+            summaryText = "";
+          } else if (typeof rawResponse === "object") {
+            if (rawResponse.outputText) {
+              summaryText = rawResponse.outputText;
+            } else if (rawResponse.text) {
+              summaryText = rawResponse.text;
+            } else if (rawResponse.content) {
+              summaryText = rawResponse.content;
+            } else if (Array.isArray(rawResponse.choices) && rawResponse.choices[0]) {
+              summaryText = rawResponse.choices.map(c => c.text || c.content || JSON.stringify(c)).join("\n");
+            } else if (Array.isArray(rawResponse)) {
+              summaryText = rawResponse.map(r => (r.text || r.content || JSON.stringify(r))).join("\n");
+            } else {
+              summaryText = JSON.stringify(rawResponse);
+            }
+          } else {
+            summaryText = String(rawResponse);
+          }
+          summaryOutput.textContent = summaryText;
+        } catch (err2) {
+          console.error("❌ [SUMMARY] Fallback prompt() failed:", err2);
+          isGeneratingSummary = false;
+          return { success: false, error: err2 && err2.message ? err2.message : String(err2) };
+        }
+      }
+    } else {
+      // No streaming support: use prompt() and keep UI showing elapsed via showGeneratingUI
+      console.log("📊 [SUMMARY] Streaming not available — using prompt()");
+      let rawResponse;
+      try {
+        rawResponse = await summarySession.prompt(prompt);
+        console.log("📊 [SUMMARY] Raw response received (type):", typeof rawResponse, rawResponse && rawResponse.constructor && rawResponse.constructor.name);
+      } catch (err) {
+        console.error("❌ [SUMMARY] prompt() threw:", err);
+        throw err;
+      }
+
+      // Normalize response to string (reuse previous normalization logic)
+      try {
+        if (typeof rawResponse === "string") {
+          summaryText = rawResponse;
+        } else if (!rawResponse) {
+          summaryText = "";
+        } else if (typeof rawResponse === "object") {
+          if (rawResponse.outputText) {
+            summaryText = rawResponse.outputText;
+          } else if (rawResponse.text) {
+            summaryText = rawResponse.text;
+          } else if (rawResponse.content) {
+            summaryText = rawResponse.content;
+          } else if (Array.isArray(rawResponse.choices) && rawResponse.choices[0]) {
+            summaryText = rawResponse.choices.map(c => c.text || c.content || JSON.stringify(c)).join("\n");
+          } else if (Array.isArray(rawResponse)) {
+            summaryText = rawResponse.map(r => (r.text || r.content || JSON.stringify(r))).join("\n");
+          } else {
+            summaryText = JSON.stringify(rawResponse);
+          }
+        } else {
+          summaryText = String(rawResponse);
+        }
+      } catch (err) {
+        console.warn("⚠️ [SUMMARY] Normalization failed, stringifying raw response:", err);
         summaryText = String(rawResponse);
       }
-    } catch (err) {
-      console.warn("⚠️ [SUMMARY] Normalization failed, stringifying raw response:", err);
-      summaryText = String(rawResponse);
+
+      summaryOutput.textContent = summaryText;
     }
 
     // sanity check
     if (!summaryText || summaryText.trim().length < 10) {
       console.warn("⚠️ [SUMMARY] Normalized summary too short:", summaryText);
+      isGeneratingSummary = false;
       return { success: false, error: "AI returned an empty or too-short response. Check DevTools console for raw output." };
     }
 
