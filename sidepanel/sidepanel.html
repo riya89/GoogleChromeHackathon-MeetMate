@@ -594,75 +594,7 @@
       <p id="modalAnalysis">Loading analysis...</p>
     </div>
 
-    <script>
-      // Robust initializer for the single-select segmented feature bar.
-      (function () {
-        const sections = ['notesSection', 'captionsSection', 'screenshotsSection', 'summarySection'];
 
-        function showOnly(targetId) {
-          sections.forEach(id => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.style.display = (id === targetId) ? 'block' : 'none';
-          });
-          const segButtons = document.querySelectorAll('#featureToggleBar .seg-btn');
-          segButtons.forEach(btn => btn.setAttribute('aria-pressed', btn.dataset.target === targetId ? 'true' : 'false'));
-        }
-
-        function wireButtons(bar) {
-          if (!bar) return false;
-          const segButtons = Array.from(bar.querySelectorAll('.seg-btn'));
-          if (!segButtons.length) return false;
-
-          segButtons.forEach(btn => {
-            // ensure it's a button and clickable
-            btn.setAttribute('role', 'button');
-            btn.setAttribute('tabindex', '0');
-            btn.type = 'button';
-            btn.addEventListener('click', () => {
-              const t = btn.dataset.target;
-              if (t) showOnly(t);
-            });
-            // keyboard support: Enter/Space
-            btn.addEventListener('keydown', (ev) => {
-              if (ev.key === 'Enter' || ev.key === ' ') {
-                ev.preventDefault();
-                const t = btn.dataset.target;
-                if (t) showOnly(t);
-              }
-            });
-          });
-
-          // initial selection: prefer aria-pressed="true", fallback to first
-          const active = segButtons.find(b => b.getAttribute('aria-pressed') === 'true') || segButtons[0];
-          if (active) showOnly(active.dataset.target);
-
-          return true;
-        }
-
-        function init() {
-          const bar = document.getElementById('featureToggleBar');
-          if (bar && wireButtons(bar)) return;
-
-          // If bar isn't present yet, observe featuresContainer for when it's added
-          const fc = document.getElementById('featuresContainer');
-          if (!fc) return;
-          const mo = new MutationObserver(() => {
-            const barNow = document.getElementById('featureToggleBar');
-            if (barNow && wireButtons(barNow)) {
-              mo.disconnect();
-            }
-          });
-          mo.observe(fc, { childList: true, subtree: true, attributes: false });
-        }
-
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', init);
-        } else {
-          init();
-        }
-      })();
-    </script>
 
     <script type="module" src="sidepanel.js"></script>
   </body>

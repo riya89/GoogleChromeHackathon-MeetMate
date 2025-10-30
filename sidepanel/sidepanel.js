@@ -3,46 +3,7 @@ console.log("=== 🚀 MEETMATE LOADING ===");
 console.log("Script loaded at:", new Date().toLocaleTimeString());
 console.log("Current URL:", window.location.href);
 
-const status = document.getElementById("status");
-const meetingIdDisplay = document.getElementById("meetingIdDisplay");
-const waitingMessage = document.getElementById("waitingMessage");
-const featuresContainer = document.getElementById("featuresContainer");
 
-// Tab elements
-const tabs = document.querySelectorAll(".tab");
-const currentTab = document.getElementById("currentTab");
-const historyTab = document.getElementById("historyTab");
-const pastMeetingsList = document.getElementById("pastMeetingsList");
-const emptyState = document.getElementById("emptyState");
-
-
-
-// Feature 2 elements
-const captureBtn = document.getElementById("captureBtn");
-const gallery = document.getElementById("gallery");
-const modal = document.getElementById("modal");
-const modalImage = document.getElementById("modalImage");
-const modalAnalysis = document.getElementById("modalAnalysis");
-const closeModal = document.getElementById("closeModal");
-
-// Feature 3 elements (Captions)
-const startCaptionBtn = document.getElementById("startCaptionBtn");
-const stopCaptionBtn = document.getElementById("stopCaptionBtn");
-const translateBtn = document.getElementById("translateBtn");
-const captionContainer = document.getElementById("captionContainer");
-const captionStatus = document.getElementById("captionStatus");
-let captionSimplificationEnabled = true; // 🔧 FIXED: Added missing variable
-
-// Caption control elements - UPDATED
-const simplifyToggle = document.getElementById("simplifyToggle");
-const translateToggle = document.getElementById("translateToggle");
-const languageSelect = document.getElementById("languageSelect");
-const captionModeStatus = document.getElementById("captionModeStatus");
-
-// Feature 4 elements (Summary)
-const generateSummaryBtn = document.getElementById("generateSummaryBtn");
-const summaryStatus = document.getElementById("summaryStatus");
-const summaryOutput = document.getElementById("summaryOutput");
 
 let textSession;
 let imageSession;
@@ -413,10 +374,7 @@ async function saveCurrentMeeting() {
 }
 
 // Auto-save notes
-notesField.addEventListener("input", () => {
-  if (saveTimeout) clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(saveCurrentMeeting, 1000);
-});
+
 
 function enableCaptions() {
   console.log("📝 [CAPTION] Enabling caption capture");
@@ -780,7 +738,7 @@ async function generateMeetingSummary() { // Removed 'type' parameter
 
 // Handle summary button click
 async function handleSummaryGeneration() {
-  console.log(`📊 [SUMMARY] ${type} summary requested`);
+  console.log(`📊 [SUMMARY] Summary requested`);
 
   if (!currentMeetingId) {
     console.error("❌ [SUMMARY] No active meeting");
@@ -1011,7 +969,8 @@ async function initSessions() {
           role: "system",
           content: "You are a meeting assistant who extracts actionable items and follow-up tasks from meeting notes."
         }
-      ]
+      ],
+      outputLanguage: 'en'
     });
     console.log("✅ Text session ready");
 
@@ -1025,7 +984,8 @@ async function initSessions() {
             content: "You are a meeting analyst who interprets screenshots and extracts important discussion points and follow-up actions. Provide clear, structured analysis."
           }
         ],
-        expectedInputs: [{ type: "image" }]
+        expectedInputs: [{ type: "image" }],
+        outputLanguage: 'en'
       });
       console.log("✅ Image session created with multimodal support");
     } catch (imgErr) {
@@ -1042,7 +1002,8 @@ async function initSessions() {
           role: "system",
           content: "You are an expert meeting summarizer. You analyze meeting transcripts and create clear, concise, and well-structured summaries."
         }
-      ]
+      ],
+      outputLanguage: 'en'
     });
     console.log("✅ Summary session ready");
 
@@ -1097,23 +1058,7 @@ if (simplifyToggle) simplifyToggle.addEventListener("click", toggleSimplificatio
 if (translateToggle) translateToggle.addEventListener("click", toggleTranslation);
 if (languageSelect) languageSelect.addEventListener("change", (e) => changeLanguage(e.target.value));
 // Tab switching
-tabs.forEach(tab => {
-  tab.addEventListener("click", () => {
-    const tabName = tab.dataset.tab;
-    
-    tabs.forEach(t => t.classList.remove("active"));
-    tab.classList.add("active");
-    
-    if (tabName === "current") {
-      currentTab.classList.add("active");
-      historyTab.classList.remove("active");
-    } else if (tabName === "history") {
-      currentTab.classList.remove("active");
-      historyTab.classList.add("active");
-      loadPastMeetings();
-    }
-  });
-});
+
 
 // Load past meetings
 async function loadPastMeetings() {
@@ -1674,6 +1619,35 @@ translateBtn.addEventListener("click", toggleTranslation);
 
 // Add event listeners for simplification level buttons (will be added in HTML)
 document.addEventListener('DOMContentLoaded', () => {
+  const status = document.getElementById("status");
+  const meetingIdDisplay = document.getElementById("meetingIdDisplay");
+  const waitingMessage = document.getElementById("waitingMessage");
+  const featuresContainer = document.getElementById("featuresContainer");
+  const tabs = document.querySelectorAll(".tab");
+  const currentTab = document.getElementById("currentTab");
+  const historyTab = document.getElementById("historyTab");
+  const pastMeetingsList = document.getElementById("pastMeetingsList");
+  const emptyState = document.getElementById("emptyState");
+  const captureBtn = document.getElementById("captureBtn");
+  const gallery = document.getElementById("gallery");
+  const modal = document.getElementById("modal");
+  const modalImage = document.getElementById("modalImage");
+  const modalAnalysis = document.getElementById("modalAnalysis");
+  const closeModal = document.getElementById("closeModal");
+  const startCaptionBtn = document.getElementById("startCaptionBtn");
+  const stopCaptionBtn = document.getElementById("stopCaptionBtn");
+  const translateBtn = document.getElementById("translateBtn");
+  const captionContainer = document.getElementById("captionContainer");
+  const captionStatus = document.getElementById("captionStatus");
+  const simplifyToggle = document.getElementById("simplifyToggle");
+  const translateToggle = document.getElementById("translateToggle");
+  const languageSelect = document.getElementById("languageSelect");
+  const captionModeStatus = document.getElementById("captionModeStatus");
+  const generateSummaryBtn = document.getElementById("generateSummaryBtn");
+  const summaryStatus = document.getElementById("summaryStatus");
+  const summaryOutput = document.getElementById("summaryOutput");
+  const notesField = document.getElementById("notes");
+
   const levelButtons = document.querySelectorAll('.simplification-level-btn');
   levelButtons.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1681,9 +1655,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   
-  const langSelect = document.getElementById('languageSelect');
-  if (langSelect) {
-    langSelect.addEventListener('change', (e) => {
+  if (languageSelect) {
+    languageSelect.addEventListener('change', (e) => {
       changeLanguage(e.target.value);
     });
   }
@@ -1692,6 +1665,33 @@ document.addEventListener('DOMContentLoaded', () => {
   if (simplifyToggle) {
     updateSimplificationButtonUI();
   }
+
+  // Auto-save notes
+  if (notesField) { // Add a check for notesField just in case
+    notesField.addEventListener("input", () => {
+      if (saveTimeout) clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(saveCurrentMeeting, 1000);
+    });
+  }
+
+  // Tab switching
+  Array.from(tabs).forEach(tab => {
+    tab.addEventListener("click", () => {
+      const tabName = tab.dataset.tab;
+      
+      tabs.forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      
+      if (tabName === "current") {
+        currentTab.classList.add("active");
+        historyTab.classList.remove("active");
+      } else if (tabName === "history") {
+        currentTab.classList.remove("active");
+        historyTab.classList.add("active");
+        loadPastMeetings();
+      }
+    });
+  });
 });
 
 // Feature 4: Summary controls
