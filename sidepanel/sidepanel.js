@@ -2004,8 +2004,8 @@ async function changeLanguage(langCode) {
   // Recreate translator with new language
   if (translationEnabled) {
     try {
-      if (typeof translation !== 'undefined' && translation.createTranslator) {
-        translatorSession = await translation.createTranslator({
+      if (typeof Translator !== 'undefined') {
+        translatorSession = await Translator.create({
           sourceLanguage: 'en',
           targetLanguage: langCode
         });
@@ -2451,14 +2451,14 @@ async function initSessions() {
     // 🔧 NEW: Translator API
     try {
       console.log("🌐 [INIT] Creating Translator session...");
-      if (typeof translation !== 'undefined' && translation.createTranslator) {
-        translatorSession = await translation.createTranslator({
+      if (typeof Translator !== 'undefined') {
+        translatorSession = await Translator.create({
           sourceLanguage: 'en',
           targetLanguage: selectedLanguage
         });
         console.log("✅ Translator API ready");
       } else {
-        console.warn("⚠️ Translator API not available (translation undefined)");
+        console.warn("⚠️ Translator API not available (Translator undefined)");
       }
     } catch (err) {
       console.warn("⚠️ Translator API not available:", err);
