@@ -1530,7 +1530,7 @@ let isCaptionsEnabled = false;
 let lastCaptionText = ""; // Track last caption to avoid duplicates
 let simplificationLevel = "medium"; // low, medium, high
 let translationEnabled = false;
-let selectedLanguage = "hi"; // Default: Hindi
+let selectedLanguage = "en"; // Default: Hindi
 
 // Storage helper functions
 async function saveMeetingData(meetingId, data) {
@@ -1688,46 +1688,6 @@ function renderCaptions() {
   
   captionContainer.scrollTop = captionContainer.scrollHeight;
 }
-
-// // Add new caption
-// async function addCaption(originalText, simplifiedText) {
-//   if (!currentMeetingData) return;
-  
-//   const caption = {
-//     timestamp: new Date().toISOString(),
-//     original: originalText,
-//     simplified: simplifiedText
-//   };
-  
-//   currentMeetingData.captions.push(caption);
-//   await saveCurrentMeeting();
-  
-//   const entry = document.createElement("div");
-//   entry.className = "caption-entry";
-  
-//   const timestamp = document.createElement("div");
-//   timestamp.className = "caption-timestamp";
-//   timestamp.textContent = new Date(caption.timestamp).toLocaleTimeString();
-  
-//   const simplified = document.createElement("div");
-//   simplified.className = "caption-simplified";
-//   simplified.textContent = simplifiedText;
-  
-//   entry.appendChild(timestamp);
-  
-//   if (originalText && originalText !== simplifiedText) {
-//     const original = document.createElement("div");
-//     original.className = "caption-original";
-//     original.textContent = `Original: ${originalText}`;
-//     entry.appendChild(original);
-//   }
-  
-//   entry.appendChild(simplified);
-//   captionContainer.appendChild(entry);
-//   captionContainer.scrollTop = captionContainer.scrollHeight;
-// }
-
-// Schedule auto-analysis for screenshots without analysis
 function scheduleAutoAnalysis() {
   if (!currentMeetingData || !currentMeetingData.screenshots) return;
   
@@ -1997,31 +1957,62 @@ function toggleTranslation() {
 }
 
 // 🔧 NEW: Change translation language
-async function changeLanguage(langCode) {
-  selectedLanguage = langCode;
-  console.log("🌐 [CAPTION] Language changed to:", langCode);
+// async function changeLanguage(langCode) {
+//   selectedLanguage = langCode;
+//   console.log("🌐 [CAPTION] Language changed to:", langCode);
 
-  // Recreate translator with new language
+//   // Recreate translator with new language
+//   if (translationEnabled) {
+//     try {
+//       if (typeof Translator !== 'undefined') {
+//         translatorSession = await Translator.create({
+//           sourceLanguage: 'en',
+//           targetLanguage: langCode
+//         });
+//         console.log("✅ Translator updated for:", langCode);
+//         status.textContent = `✅ Translation language changed to ${langCode}`;
+//         setTimeout(() => status.textContent = "", 2000);
+//       }
+//     } catch (err) {
+//       console.error("❌ Failed to change language:", err);
+//       status.textContent = "⚠️ Failed to change language";
+//     }
+//   }
+
+//   updateCaptionModeStatus();
+// }
+async function changeLanguage(langCode) {
+  // Fallback to previously selected language or 'en'
+  const newLang = langCode || selectedLanguage || 'en';
+  selectedLanguage = newLang;
+  console.log("🌐 [CAPTION] Language changed to:", selectedLanguage);
+
+  // Only try to recreate translator if translation is enabled and Translator API exists
   if (translationEnabled) {
     try {
       if (typeof Translator !== 'undefined') {
         translatorSession = await Translator.create({
           sourceLanguage: 'en',
-          targetLanguage: langCode
+          targetLanguage: selectedLanguage
         });
-        console.log("✅ Translator updated for:", langCode);
-        status.textContent = `✅ Translation language changed to ${langCode}`;
+        console.log("✅ Translator updated for:", selectedLanguage);
+        status.textContent = `✅ Translation language changed to ${selectedLanguage}`;
+        setTimeout(() => status.textContent = "", 2000);
+      } else {
+        console.warn("⚠️ Translator API not available (Translator undefined)");
+        translatorSession = null;
+        status.textContent = "⚠️ Translator API not available";
         setTimeout(() => status.textContent = "", 2000);
       }
     } catch (err) {
       console.error("❌ Failed to change language:", err);
       status.textContent = "⚠️ Failed to change language";
+      translatorSession = null;
     }
   }
 
   updateCaptionModeStatus();
 }
-
 // 🔧 NEW: Update caption mode status display
 function updateCaptionModeStatus() {
   const modes = [];
@@ -2091,19 +2082,42 @@ async function processCaptionFromMeet(captionText) {
   }
 
   // Step 2: Translate if enabled
-  if (translationEnabled && translatorSession) {
+  // if (translationEnabled && translatorSession) {
+  //   try {
+  //     console.log("🌐 [CAPTION] Translating to", selectedLanguage, "...");
+
+  //     // Translate the simplified text (or original if not simplified)
+  //     translatedText = await translatorSession.translate(simplifiedText);
+
+  //     console.log("✅ [CAPTION] Translated:", translatedText);
+  //   } catch (err) {
+  //     console.error("❌ [CAPTION] Translation failed:", err);
+  //     translatedText = null;
+  //   }
+  // }
+  if (translationEnabled) {
+  if (!selectedLanguage) {
+    console.warn("🌐 [CAPTION] No target language selected - skipping translation");
+    translatedText = null;
+  } else if (translatorSession && typeof translatorSession.translate === 'function') {
     try {
       console.log("🌐 [CAPTION] Translating to", selectedLanguage, "...");
-
-      // Translate the simplified text (or original if not simplified)
-      translatedText = await translatorSession.translate(simplifiedText);
-
+      // Prefer explicit target language if API accepts options
+      translatedText = await translatorSession.translate(simplifiedText, { targetLanguage: selectedLanguage });
+      // If the translator API doesn't accept options, fall back to single-arg call
+      if (!translatedText) {
+        translatedText = await translatorSession.translate(simplifiedText);
+      }
       console.log("✅ [CAPTION] Translated:", translatedText);
     } catch (err) {
       console.error("❌ [CAPTION] Translation failed:", err);
       translatedText = null;
     }
+  } else {
+    console.warn("⚠️ [CAPTION] Translator session unavailable - skipping translation");
+    translatedText = null;
   }
+}
 
   // Add to UI and storage
   await addCaption(captionText, simplifiedText, translatedText);
@@ -2472,11 +2486,16 @@ async function initSessions() {
     status.textContent = "❌ Prompt API not supported. Enable chrome://flags → #prompt-api-for-gemini-nano";
   }
 }
-startCaptionBtn.addEventListener("click", enableCaptions);
-stopCaptionBtn.addEventListener("click", disableCaptions);
-simplifyToggle.addEventListener("click", toggleSimplification);
-translateToggle.addEventListener("click", toggleTranslation);
-languageSelect.addEventListener("change", (e) => changeLanguage(e.target.value));
+// startCaptionBtn.addEventListener("click", enableCaptions);
+// stopCaptionBtn.addEventListener("click", disableCaptions);
+// simplifyToggle.addEventListener("click", toggleSimplification);
+// translateToggle.addEventListener("click", toggleTranslation);
+// languageSelect.addEventListener("change", (e) => changeLanguage(e.target.value));
+if (startCaptionBtn) startCaptionBtn.addEventListener("click", enableCaptions);
+if (stopCaptionBtn) stopCaptionBtn.addEventListener("click", disableCaptions);
+if (simplifyToggle) simplifyToggle.addEventListener("click", toggleSimplification);
+if (translateToggle) translateToggle.addEventListener("click", toggleTranslation);
+if (languageSelect) languageSelect.addEventListener("change", (e) => changeLanguage(e.target.value));
 // Tab switching
 tabs.forEach(tab => {
   tab.addEventListener("click", () => {
