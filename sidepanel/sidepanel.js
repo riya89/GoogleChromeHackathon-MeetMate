@@ -363,7 +363,7 @@ async function analyzeScreenshot(index) {
     
     // Now ask the question
     const response = await imageSession.prompt(
-      "Analyze this meeting screenshot and provide: 1) Key discussion points visible, 2) Important visual elements (charts, diagrams, shared content), 3) Any action items or decisions mentioned. Be concise but thorough."
+      "Summarize the content of this meeting screenshot. Focus on the main topic and any action items."
     );
     
     console.log(`✅ [ANALYZE] Analysis received for screenshot ${index + 1}`);
