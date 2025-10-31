@@ -424,10 +424,28 @@
     </style>
   </head>
   <body>
-    <div id="meetingHeader">
-      <h2>🧠 MeetMate - Your Meeting Co-Pilot</h2>
-      <div id="meetingIdDisplay">⏳ Detecting meeting...</div>
-    </div>
+    <div id="meetingHeader" style="
+  display: flex;
+  align-items: center;
+  gap: 10px;
+">
+  <!-- Logo -->
+  <img 
+    src="/images/meetmate-icon3.png" 
+    alt="MeetMate Logo" 
+    style="
+      width: 80px;
+      height: 80px;
+    "
+  />
+
+  <!-- Text -->
+  <div style="flex: 1;">
+    <h2 style="margin: 0;">MeetMate - Your Meeting Co-Pilot</h2>
+    <div id="meetingIdDisplay">⏳ Detecting meeting...</div>
+  </div>
+</div>
+
 
     <div id="tabs">
       <button class="tab active" data-tab="current">📝 Current Meeting</button>
@@ -482,7 +500,7 @@
     id="notes"
     rows="8"
     placeholder="Type your meeting notes here..."
-    style="min-height: 200px;"
+    style="min-height: 400px;"
   ></textarea>
   <div id="autoExtractStatus" style="margin-top: 8px; font-size: 12px; color: #666; font-style: italic;">
     <!-- Auto-extraction status will appear here -->

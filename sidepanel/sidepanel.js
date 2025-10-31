@@ -1824,20 +1824,53 @@ function exportMeetingAsPDF(meeting) {
 `;
   }
 
-  if (meeting.screenshots && meeting.screenshots.length > 0) {
-    html += `
+if (meeting.screenshots && meeting.screenshots.length > 0) {
+  html += `
   <h2>📸 Screenshots & Analysis (${meeting.screenshots.length})</h2>
-`;
-    meeting.screenshots.forEach((ss, idx) => {
-      const time = new Date(ss.timestamp).toLocaleString();
-      html += `
-  <div class="screenshot-analysis" style="white-space: pre-line;">
-  ${formatAnalysisClean(ss.analysis)}
-</div>
+  `;
 
-`;
-    });
-  }
+  meeting.screenshots.forEach((ss, idx) => {
+    const time = new Date(ss.timestamp).toLocaleString();
+    const imgSrc = ss.dataUri || ""; // base64 image from storage
+    const analysis = ss.analysis ? formatAnalysisClean(ss.analysis) : "No analysis available.";
+
+    html += `
+    <div class="screenshot-analysis" style="
+      white-space: pre-line;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    ">
+      <div style="
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+      ">
+        <div style="flex-shrink: 0;">
+          <img src="${imgSrc}" alt="Screenshot ${idx + 1}" 
+            style="
+              width: 300px;
+              border: 1px solid #ccc;
+              border-radius: 6px;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            " />
+        </div>
+        <div style="flex: 1;">
+          <div style="font-size: 11px; color: #666; margin-bottom: 6px;">
+            Captured: ${time}
+          </div>
+          <div style="font-size: 13px; color: #333; line-height: 1.5;">
+            ${analysis}
+          </div>
+        </div>
+      </div>
+    </div>
+    `;
+  });
+}
+
 
   if (meeting.captions && meeting.captions.length > 0) {
     html += `
