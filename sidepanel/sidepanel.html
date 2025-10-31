@@ -420,32 +420,7 @@
   border-top: 1px solid #e8f0fe;
   font-weight: 500;
 }
-.summary-generating {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #666;
-  padding: 12px;
-  background: #f9f9f9;
-  border-radius: 6px;
-}
 
-.summary-generating::before {
-  content: '';
-  width: 16px;
-  height: 16px;
-  border: 2px solid #1a73e8;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
     </style>
   </head>
   <body>
@@ -523,9 +498,9 @@
 
         <!-- Feature 4: Summary -->
         <div id="summarySection" class="feature-section" style="display:none;">
-          <h3>✨ Meeting Summary</h3>
-          <div id="summaryGenerating" class="summary-generating" style="display: none;">
-            Generating summary...
+          <h4>📊 Meeting Summary</h4>
+          <div class="detail-content summary-content">
+            <div class="summary-generating" id="summary-loading-indicator-${meeting.meetingId}">Generating summary...</div>
           </div>
           <div id="summaryContent" class="detail-content" style="display: none;"></div>
         </div>

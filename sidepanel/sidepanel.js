@@ -46,7 +46,6 @@ let textSession;
 let imageSession;
 let rewriterSession;
 let translatorSession;
-let summarySession;
 let currentMeetingId = null;
 let currentMeetTabId = null;
 let checkInterval = null;
@@ -164,8 +163,7 @@ async function initCurrentMeeting(meetingId) {
       notes: "",
       actionables: "",
       screenshots: [],
-      captions: [],
-      summary: null
+      captions: []
     };
   }
   
@@ -963,22 +961,8 @@ async function endCurrentMeeting() {
     disableCaptions();
   }
 
-  if (currentMeetingData.captions && currentMeetingData.captions.length > 0 && !currentMeetingData.summary) {
-    console.log("📊 Auto-generating meeting summary...");
-    status.textContent = "📊 Generating meeting summary...";
-
-    try {
-      const result = await generateMeetingSummary('comprehensive');
-      if (result.success) {
-        console.log("✅ Auto-summary generated successfully");
-      }
-    } catch (err) {
-      console.error("Auto-summary failed:", err);
-    }
-  }
-
-  currentMeetingData.endTime = new Date().toISOString();
-  await saveMeetingData(currentMeetingId, currentMeetingData);
+  meetingDataToEnd.endTime = new Date().toISOString();
+  await saveMeetingData(currentMeetingId, meetingDataToEnd);
 
   console.log("🏁 Meeting ended:", currentMeetingId);
 
@@ -986,7 +970,7 @@ async function endCurrentMeeting() {
   notesField.value = "";
   outputDiv.textContent = "";
   gallery.innerHTML = "";
-captionContainer.innerHTML = "";
+  captionContainer.innerHTML = "";
   analysisQueue = [];
 }
 
@@ -1136,18 +1120,7 @@ async function initSessions() {
       status.textContent = "⚠️ Screenshot analysis unavailable";
     }
 
-    // Summary session
-    console.log("📊 [INIT] Creating summary session...");
-    try {
-        summarySession = await Rewriter.create({
-            tone: "formal",
-            length: "summary"
-        });
-        console.log("✅ Summary session ready");
-    } catch (err) {
-        console.warn("⚠️ Summary session not available:", err);
-        summarySession = null;
-    }
+
 
     // 🔧 NEW: Rewriter API for caption simplification
      try {
@@ -1511,39 +1484,7 @@ function createMeetingCard(meeting) {
 ` : ''}
 
 
-      ${meeting.captions && meeting.captions.length > 0 ? `
-        <div class="detail-section">
-          <h4>🎤 Live Captions (${meeting.captions.length})</h4>
-          <div class="caption-container-history">
-            ${meeting.captions.map(c => `
-              <div class="caption-entry">
-                <div class="caption-timestamp">${new Date(c.timestamp).toLocaleTimeString()}</div>
-                ${c.original && c.original !== c.simplified ? `
-                  <div class="caption-original">Original: ${c.original}</div>
-                ` : ''}
-                <div class="caption-simplified">${c.simplified}</div>
-                ${c.translated ? `
-                  <div class="caption-translated">🌐 ${c.translated}</div>
-                ` : ''}
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      ` : ''}
 
-      ${meeting.summary ? `
-        <div class="detail-section summary-section">
-          <h4>📊 Meeting Summary</h4>
-          <div class="summary-badge">${meeting.summary.type} • ${new Date(meeting.summary.generatedAt).toLocaleString()}</div>
-          <div class="detail-content summary-content">${meeting.summary.content}</div>
-        </div>
-      ` : (meeting.endTime ? `
-        <div class="detail-section summary-section" id="summary-section-${meeting.meetingId}">
-          <h4>📊 Meeting Summary</h4>
-          <div class="detail-content summary-content"><div class="summary-generating">Generating summary...</div></div>
-        </div>
-      ` : '')}
-    </div>
   `;
   const markdownBtn = card.querySelector(".export-markdown-btn");
   markdownBtn.addEventListener("click", async (e) => {
@@ -1595,39 +1536,7 @@ function createMeetingCard(meeting) {
   return card;
 }
 
-async function generateSummaryForMeeting(meetingId) {
-  const summarySection = document.getElementById(`summary-section-${meetingId}`);
-  if (!summarySection) return;
 
-  const summaryContent = summarySection.querySelector('.summary-content');
-
-  try {
-    summaryContent.innerHTML = `<div class="summary-generating">Generating summary...</div>`;
-
-    const meeting = await getMeetingData(meetingId);
-    if (!meeting) {
-      throw new Error('Meeting data not found');
-    }
-
-    if (meeting.summary) {
-      summaryContent.innerHTML = meeting.summary.content;
-      return;
-    }
-
-    const result = await generateMeetingSummary('comprehensive', meeting);
-
-    if (result.success) {
-      const updatedMeeting = await getMeetingData(meetingId);
-      summaryContent.innerHTML = updatedMeeting.summary.content;
-    } else {
-      throw new Error(result.error || 'Summary generation failed');
-    }
-
-  } catch (err) {
-    console.error(`❌ Failed to generate summary for ${meetingId}:`, err);
-    summaryContent.innerHTML = `<div style="color: #d93025;">⚠️ Summary generation failed: ${err.message}</div>`;
-  }
-}
 
 function openModalFromHistory(screenshot) {
   if (!screenshot) return;
