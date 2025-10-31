@@ -235,12 +235,40 @@ async function initCurrentMeeting(meetingId) {
   //   outputDiv.textContent = data.actionables;
   // }
   
-  renderScreenshotGrid();
-  renderCaptions();
-  renderSummary();
-  scheduleAutoAnalysis();
+  // renderScreenshotGrid();
+  // renderCaptions();
+  // renderSummary();
+  // scheduleAutoAnalysis();
 
-  return data;
+  // return data;
+  // Render components
+renderScreenshotGrid();
+renderCaptions();
+renderSummary();
+scheduleAutoAnalysis();
+
+// ✅ Auto-generate summary if not yet generated
+if (!data.summary && summarySession) {
+  console.log("📊 Auto-generating summary for meeting:", meetingId);
+  showGeneratingUI();
+  try {
+    const result = await generateMeetingSummary('full');
+    hideGeneratingUI();
+    if (result.success) {
+      renderSummary();
+      console.log("✅ Summary auto-generated successfully");
+    } else {
+      console.warn("⚠️ Summary generation failed:", result.error);
+      summaryStatus.textContent = "⚠️ Summary generation failed.";
+    }
+  } catch (err) {
+    hideGeneratingUI();
+    console.error("❌ Error generating summary:", err);
+  }
+}
+
+return data;
+
 }
 
 // Render existing summary
@@ -1696,21 +1724,31 @@ function createMeetingCard(meeting) {
       ` : ''}
 
       ${meeting.screenshots && meeting.screenshots.length > 0 ? `
-        <div class="detail-section">
-          <h4>📸 Screenshots & Analysis (${meeting.screenshots.length})</h4>
-          <div class="screenshots-grid">
-            ${meeting.screenshots.map((ss, idx) => `
-              <div class="screenshot-card">
-                <img src="${ss.dataUri}" class="screenshot-thumb" data-index="${idx}" alt="Screenshot ${idx + 1}">
-                <div class="screenshot-info">
-                  <div class="screenshot-time">${new Date(ss.timestamp).toLocaleString()}</div>
-                  <div class="screenshot-analysis" style="white-space: pre-line;">${formatAnalysisClean(ss.analysis)}</div>
-                </div>
-              </div>
-            `).join('')}
+  <div class="detail-section">
+    <h4>📸 Screenshots & Analysis (${meeting.screenshots.length})</h4>
+    <div class="screenshots-grid">
+      ${meeting.screenshots.map((ss, idx) => `
+        <div class="screenshot-card">
+          <img 
+            src="${ss.dataUri}" 
+            class="screenshot-thumb" 
+            data-index="${idx}" 
+            alt="Screenshot ${idx + 1}"
+          >
+          <div class="screenshot-info">
+            <div class="screenshot-time">
+              ${new Date(ss.timestamp).toLocaleString()}
+            </div>
+            <div class="screenshot-analysis clean-analysis" style="white-space: pre-line;">
+              ${formatAnalysisClean(ss.analysis)}
+            </div>
           </div>
         </div>
-      ` : ''}
+      `).join('')}
+    </div>
+  </div>
+` : ''}
+
 
       ${meeting.captions && meeting.captions.length > 0 ? `
         <div class="detail-section">
@@ -2298,4 +2336,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Feature 4: Summary controls
-if (generateSummaryBtn) generateSummaryBtn.addEventListener("click", () => handleSummaryGeneration('full'));
+// if (generateSummaryBtn) generateSummaryBtn.addEventListener("click", () => handleSummaryGeneration('full'));
