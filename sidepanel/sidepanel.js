@@ -163,7 +163,8 @@ async function initCurrentMeeting(meetingId) {
       notes: "",
       actionables: "",
       screenshots: [],
-      captions: []
+      captions: [],
+      customName: null
     };
   }
   
@@ -288,7 +289,7 @@ function renderScreenshotGrid() {
     analysisText.style.cssText = "font-size: 13px; line-height: 1.5; color: #333; white-space: pre-wrap;";
     
     if (screenshot.analysis) {
-      analysisText.textContent = screenshot.analysis;
+      analysisText.textContent = formatAnalysisClean(screenshot.analysis);
     } else if (analysisQueue.includes(index) || isAnalyzing) {
       analysisText.innerHTML = `<span style="color: #1a73e8;">⏳ Analyzing...</span>`;
     } else {
@@ -963,8 +964,10 @@ async function endCurrentMeeting() {
     disableCaptions();
   }
 
-  meetingDataToEnd.endTime = new Date().toISOString();
-  await saveMeetingData(currentMeetingId, meetingDataToEnd);
+  const meetingDataToSave = JSON.parse(JSON.stringify(currentMeetingData));
+  meetingDataToSave.endTime = new Date().toISOString();
+  console.log("🏁 [END] Setting endTime to:", meetingDataToSave.endTime);
+  await saveMeetingData(currentMeetingId, meetingDataToSave);
 
   console.log("🏁 Meeting ended:", currentMeetingId);
 
@@ -1402,6 +1405,7 @@ function cleanScreenshotAnalysis(analysis) {
 }
 
 function createMeetingCard(meeting) {
+  console.log("📊 [CARD] Creating card for meeting:", meeting.meetingId, "endTime:", meeting.endTime);
   const card = document.createElement("div");
   card.className = "meeting-card";
 
@@ -1409,35 +1413,49 @@ function createMeetingCard(meeting) {
   const dateStr = startDate.toLocaleDateString();
   const timeStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  const duration = meeting.endTime
-    ? Math.round((new Date(meeting.endTime) - new Date(meeting.startTime)) / 60000)
-    : "Ongoing";
+let duration = "Ongoing";
+if (meeting.endTime && !isNaN(new Date(meeting.endTime).getTime())) {
+  const diffMs = new Date(meeting.endTime) - new Date(meeting.startTime);
+  if (diffMs > 0) {
+    duration = Math.round(diffMs / 60000); // convert ms → minutes
+  }
+}
+
 
   // Prepare cleaned content
   const cleanedNotes = meeting.notes ? cleanText(meeting.notes) : '';
   const cleanedActionables = meeting.actionables ? formatAsBullets(meeting.actionables) : '';
 
   card.innerHTML = `
-    <div class="meeting-card-header">
-      <span class="meeting-id-badge">${meeting.meetingId}</span>
-      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-        <span class="meeting-time">${dateStr} at ${timeStr}</span>
-        <button class="export-markdown-btn" data-meeting-id="${meeting.meetingId}"
-          style="background: #34a853; padding: 4px 10px; font-size: 12px; border-radius: 4px;"
-          title="Copy as Markdown">
-          📋 Markdown
-        </button>
-        <button class="export-pdf-btn" data-meeting-id="${meeting.meetingId}"
-          style="background: #ea4335; padding: 4px 10px; font-size: 12px; border-radius: 4px;"
-          title="Export as PDF">
-          📄 PDF
-        </button>
-        <button class="delete-meeting-btn" data-meeting-id="${meeting.meetingId}"
-          style="background: #d93025; padding: 4px 10px; font-size: 12px; border-radius: 4px;">
-          🗑️ Delete
-        </button>
-      </div>
+    <div class="meeting-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+    <span class="meeting-id-badge" style="font-weight: 600; background: #e8f0fe; color: #1967d2; padding: 4px 8px; border-radius: 4px;">
+      ${meeting.customName || meeting.meetingId}
+    </span>
+
+    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+      <button class="rename-meeting-btn" data-meeting-id="${meeting.meetingId}"
+        style="background: #fbbc05; color: #333; padding: 4px 10px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer;">
+        ✏️ Rename
+      </button>
+
+      <button class="export-markdown-btn" data-meeting-id="${meeting.meetingId}"
+        style="background: #34a853; color: white; padding: 4px 10px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer;"
+        title="Copy as Markdown">
+        📋 Markdown
+      </button>
+
+      <button class="export-pdf-btn" data-meeting-id="${meeting.meetingId}"
+        style="background: #ea4335; color: white; padding: 4px 10px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer;"
+        title="Export as PDF">
+        📄 PDF
+      </button>
+
+      <button class="delete-meeting-btn" data-meeting-id="${meeting.meetingId}"
+        style="background: #d93025; color: white; padding: 4px 10px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer;">
+        🗑️ Delete
+      </button>
     </div>
+  </div>
     <div class="meeting-stats">
       <span>⏱️ ${duration !== "Ongoing" ? duration + " min" : duration}</span>
       <span>📝 ${cleanedNotes ? "Has notes" : "No notes"}</span>
@@ -1488,6 +1506,17 @@ function createMeetingCard(meeting) {
 
 
   `;
+  const renameBtn = card.querySelector(".rename-meeting-btn");
+  renameBtn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const newName = prompt("Enter a new name for the meeting:", meeting.customName || meeting.meetingId);
+    if (newName && newName.trim() !== "") {
+      meeting.customName = newName.trim();
+      await saveMeetingData(meeting.meetingId, meeting);
+      card.querySelector(".meeting-id-badge").textContent = newName.trim();
+    }
+  });
+
   const markdownBtn = card.querySelector(".export-markdown-btn");
   markdownBtn.addEventListener("click", async (e) => {
     e.stopPropagation();
@@ -1619,6 +1648,8 @@ async function exportMeetingAsMarkdown(meeting) {
   }
 }
 
+
+
 // Export meeting as PDF
 function exportMeetingAsPDF(meeting) {
   console.log("📄 [EXPORT] Exporting as PDF:", meeting.meetingId);
@@ -1734,11 +1765,10 @@ function exportMeetingAsPDF(meeting) {
     meeting.screenshots.forEach((ss, idx) => {
       const time = new Date(ss.timestamp).toLocaleString();
       html += `
-  <div class="screenshot-analysis">
-    <h3>Screenshot ${idx + 1}</h3>
-    <p><strong>Time:</strong> ${time}</p>
-    ${ss.analysis ? `<p><strong>Analysis:</strong><br>${cleanScreenshotAnalysis(ss.analysis).replace(/\n/g, '<br>')}</p>` : ''}
-  </div>
+  <div class="screenshot-analysis" style="white-space: pre-line;">
+  ${formatAnalysisClean(ss.analysis)}
+</div>
+
 `;
     });
   }
