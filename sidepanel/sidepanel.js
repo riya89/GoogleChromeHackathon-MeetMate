@@ -310,14 +310,16 @@ function formatAnalysisClean(analysis) {
 
   // Remove markdown symbols and extra whitespace
   let cleaned = analysis
-    .replace(/[*#_`>]/g, "") // remove markdown symbols
+    .replace(/\*\*/g, "") // remove bold
+    .replace(/\*/g, "") // remove italics
+    .replace(/[_`>]/g, "") // remove other markdown symbols
     .replace(/\s{2,}/g, " ") // compress extra spaces
     .replace(/\n{2,}/g, "\n") // remove extra newlines
     .trim();
 
   // Split into sections (by numbering or bullets)
   const sections = cleaned
-    .split(/(?:\d\)|-|\u2022)\s+/) // handles 1), -, •
+    .split(/(?:\d\.|\d\)|- |•)\s+/) // handles 1., 1), -, •
     .filter(s => s.trim().length > 0);
 
   // Rebuild with clean bullet points
@@ -1721,22 +1723,8 @@ function exportMeetingAsPDF(meeting) {
   if (meeting.actionables) {
     html += `
   <h2>✅ Actionable Items</h2>
-  <p>${meeting.actionables.replace(/\n/g, '<br>')}</p>
+  <p>${formatAsBullets(meeting.actionables).replace(/\n/g, '<br>')}</p>
 `;
-  }
-
-  if (meeting.captions && meeting.captions.length > 0) {
-    html += `
-  <h2>💬 Live Captions (${meeting.captions.length})</h2>
-`;
-    meeting.captions.forEach(caption => {
-      const time = new Date(caption.timestamp).toLocaleTimeString();
-      html += `
-  <div class="caption">
-    <span class="timestamp">[${time}]</span> ${caption.simplified || caption.original}
-  </div>
-`;
-    });
   }
 
   if (meeting.screenshots && meeting.screenshots.length > 0) {
@@ -1749,7 +1737,21 @@ function exportMeetingAsPDF(meeting) {
   <div class="screenshot-analysis">
     <h3>Screenshot ${idx + 1}</h3>
     <p><strong>Time:</strong> ${time}</p>
-    ${ss.analysis ? `<p><strong>Analysis:</strong><br>${ss.analysis.replace(/\n/g, '<br>')}</p>` : ''}
+    ${ss.analysis ? `<p><strong>Analysis:</strong><br>${cleanScreenshotAnalysis(ss.analysis).replace(/\n/g, '<br>')}</p>` : ''}
+  </div>
+`;
+    });
+  }
+
+  if (meeting.captions && meeting.captions.length > 0) {
+    html += `
+  <h2>💬 Live Captions (${meeting.captions.length})</h2>
+`;
+    meeting.captions.forEach(caption => {
+      const time = new Date(caption.timestamp).toLocaleTimeString();
+      html += `
+  <div class="caption">
+    <span class="timestamp">[${time}]</span> ${caption.simplified || caption.original}
   </div>
 `;
     });
