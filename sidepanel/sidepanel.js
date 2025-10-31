@@ -371,6 +371,25 @@ function renderScreenshotGrid() {
   });
 }
 
+function formatAnalysisClean(analysis) {
+  if (!analysis) return "No analysis available.";
+
+  // Remove markdown symbols and extra whitespace
+  let cleaned = analysis
+    .replace(/[*#_`>]/g, "") // remove markdown symbols
+    .replace(/\s{2,}/g, " ") // compress extra spaces
+    .replace(/\n{2,}/g, "\n") // remove extra newlines
+    .trim();
+
+  // Split into sections (by numbering or bullets)
+  const sections = cleaned
+    .split(/(?:\d\)|-|\u2022)\s+/) // handles 1), -, •
+    .filter(s => s.trim().length > 0);
+
+  // Rebuild with clean bullet points
+  return sections.map(s => `• ${s.trim()}`).join("\n");
+}
+
 // 🔧 FIXED: Analyze screenshot using append-then-prompt pattern (correct Chrome AI format)
 async function analyzeScreenshot(index) {
   if (!currentMeetingData) {
@@ -450,7 +469,11 @@ async function analyzeScreenshot(index) {
     shot.analysis = response;
     
     if (analysisElement) {
-      analysisElement.textContent = response;
+      // analysisElement.textContent = response;
+      const formatted = formatAnalysisClean(response);
+      analysisElement.textContent = formatted;
+      analysisElement.style.whiteSpace = "pre-line";
+
       analysisElement.style.color = "#333";
     }
     
@@ -1681,7 +1704,7 @@ function createMeetingCard(meeting) {
                 <img src="${ss.dataUri}" class="screenshot-thumb" data-index="${idx}" alt="Screenshot ${idx + 1}">
                 <div class="screenshot-info">
                   <div class="screenshot-time">${new Date(ss.timestamp).toLocaleString()}</div>
-                  <div class="screenshot-analysis">${cleanScreenshotAnalysis(ss.analysis)}</div>
+                  <div class="screenshot-analysis" style="white-space: pre-line;">${formatAnalysisClean(ss.analysis)}</div>
                 </div>
               </div>
             `).join('')}
