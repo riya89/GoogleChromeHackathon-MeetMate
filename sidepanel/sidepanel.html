@@ -468,7 +468,6 @@
           <button id="segNotes" class="seg-btn" aria-pressed="true" data-target="notesSection">Notes</button>
           <button id="segCaptions" class="seg-btn" aria-pressed="false" data-target="captionsSection">Captions</button>
           <button id="segScreenshots" class="seg-btn" aria-pressed="false" data-target="screenshotsSection">Screenshots</button>
-          <button id="segSummary" class="seg-btn" aria-pressed="false" data-target="summarySection">Summary</button>
         </div>
 
         <!-- features sections follow -->
@@ -566,22 +565,6 @@
           <div id="captionContainer"></div>
         </div>
 
-        <!-- Feature 4: Meeting Summary -->
-        <div id="summarySection" class="feature-section scrollable" style="display:none;">
-          <h3>📊 Meeting Summary</h3>
-          <p style="font-size: 13px; color: #666; margin-bottom: 12px;">
-            Generate an AI-powered report containing notes, action items, captions summary, and screenshot analyses — all in one.
-          </p>
-
-          <!-- <div class="button-group">
-            <button id="generateSummaryBtn">🧾 Generate Summary</button>
-          </div> -->
-
-          <div id="summaryStatus" style="margin-top: 12px; font-size: 13px; color: #666;"></div>
-
-          <div id="summaryOutput" style="margin-top: 12px; padding: 16px; background: #f9f9f9; border-radius: 8px; border-left: 4px solid #1a73e8; display: none; white-space: pre-wrap; line-height: 1.6;"></div>
-        </div>
-
         <p id="status"></p>
       </div>
     </div>
@@ -605,7 +588,7 @@
     <script>
       // Robust initializer for the single-select segmented feature bar.
       (function () {
-        const sections = ['notesSection', 'captionsSection', 'screenshotsSection', 'summarySection'];
+        const sections = ['notesSection', 'captionsSection', 'screenshotsSection'];
 
         function showOnly(targetId) {
           sections.forEach(id => {
