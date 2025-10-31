@@ -1569,6 +1569,26 @@ if (meeting.endTime && !isNaN(new Date(meeting.endTime).getTime())) {
   </div>
 ` : ''}
 
+      ${meeting.captions && meeting.captions.length > 0 ? `
+        <div class="detail-section">
+          <h4>🎤 Live Captions (${meeting.captions.length})</h4>
+          <div class="caption-container-history">
+            ${meeting.captions.map(c => `
+              <div class="caption-entry">
+                <div class="caption-timestamp">${new Date(c.timestamp).toLocaleTimeString()}</div>
+                ${c.original && c.original !== c.simplified ? `
+                  <div class="caption-original">Original: ${c.original}</div>
+                ` : ''}
+                <div class="caption-simplified">${c.simplified}</div>
+                ${c.translated ? `
+                  <div class="caption-translated">🌐 ${c.translated}</div>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
 
 
   `;
