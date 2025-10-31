@@ -38,7 +38,7 @@ MeetMate is a Chrome extension that lives inside Google Meet, providing real-tim
 
 ---
 
-## 📋 Requirements
+## Requirements
 
 ### System Requirements:
 - **Chrome/Brave:** Version 138+ (141+ recommended)
@@ -59,18 +59,8 @@ MeetMate is a Chrome extension that lives inside Google Meet, providing real-tim
 
 ---
 
-## 🔧 Installation
+## Installation
 
-### Option 1: Install from Release (Recommended)
-1. Download the latest release from [Releases](../../releases)
-2. Extract the ZIP file
-3. Open Chrome and go to `chrome://extensions/`
-4. Enable **Developer mode** (toggle in top-right)
-5. Click **Load unpacked**
-6. Select the extracted `dist` folder
-7. Join a Google Meet to start using MeetMate!
-
-### Option 2: Build from Source
 ```bash
 # Clone the repository
 https://github.com/riya89/GoogleChromeHackathon-MeetMate.git
