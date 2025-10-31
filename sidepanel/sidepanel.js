@@ -255,39 +255,101 @@ async function processAnalysisQueue() {
   isAnalyzing = false;
 }
 
-// Render screenshots in a grid with summaries
 function renderScreenshotGrid() {
+  if (!gallery) return;
+
+  // 🔧 Scrollable gallery container
   gallery.innerHTML = "";
-  
-  if (!currentMeetingData || currentMeetingData.screenshots.length === 0) {
-    return;
-  }
-  
+  gallery.style.cssText = `
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-right: 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fafafa;
+    scroll-behavior: smooth;
+  `;
+
+  if (!currentMeetingData || currentMeetingData.screenshots.length === 0) return;
+
   currentMeetingData.screenshots.forEach((screenshot, index) => {
+    // === Screenshot card ===
     const container = document.createElement("div");
-    container.className = "screenshot-grid-item";
-    
+    container.style.cssText = `
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: white;
+      border-radius: 6px;
+      padding: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      height: 220px;                /* ✅ fixed card height */
+      overflow: hidden;             /* hide overflow */
+    `;
+
+    // === Thumbnail ===
     const imgContainer = document.createElement("div");
-    imgContainer.style.cssText = "flex-shrink: 0; width: 200px;";
-    
+    imgContainer.style.cssText = `
+      flex-shrink: 0;
+      width: 200px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+    `;
+
     const thumb = document.createElement("img");
     thumb.src = screenshot.dataUri;
     thumb.dataset.index = index;
+    thumb.style.cssText = `
+      width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid #ddd;
+      transition: transform 0.2s ease;
+    `;
+    thumb.addEventListener("mouseenter", () => (thumb.style.transform = "scale(1.02)"));
+    thumb.addEventListener("mouseleave", () => (thumb.style.transform = "scale(1)"));
     thumb.addEventListener("click", () => openModal(index));
-    
+
     imgContainer.appendChild(thumb);
-    
+
+    // === Analysis column ===
     const analysisContainer = document.createElement("div");
-    analysisContainer.style.cssText = "flex: 1; display: flex; flex-direction: column;";
-    
+    analysisContainer.style.cssText = `
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    `;
+
     const timestamp = document.createElement("div");
-    timestamp.style.cssText = "font-size: 11px; color: #666; margin-bottom: 6px;";
+    timestamp.style.cssText = `
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 6px;
+      flex-shrink: 0;
+    `;
     timestamp.textContent = new Date(screenshot.timestamp).toLocaleString();
-    
+
+    // ✅ Scrollable analysis text area
     const analysisText = document.createElement("div");
     analysisText.className = `analysis-text-${index}`;
-    analysisText.style.cssText = "font-size: 13px; line-height: 1.5; color: #333; white-space: pre-wrap;";
-    
+    analysisText.style.cssText = `
+      font-size: 13px;
+      line-height: 1.4;
+      color: #333;
+      white-space: pre-wrap;
+      overflow-y: auto;             /* ✅ scroll inside card */
+      flex: 1;
+      padding-right: 6px;
+    `;
+
     if (screenshot.analysis) {
       analysisText.textContent = formatAnalysisClean(screenshot.analysis);
     } else if (analysisQueue.includes(index) || isAnalyzing) {
@@ -295,16 +357,20 @@ function renderScreenshotGrid() {
     } else {
       analysisText.innerHTML = `<span style="color: #999;">⏳ Queued for analysis</span>`;
     }
-    
+
     analysisContainer.appendChild(timestamp);
     analysisContainer.appendChild(analysisText);
-    
+
     container.appendChild(imgContainer);
     container.appendChild(analysisContainer);
-    
+
     gallery.appendChild(container);
   });
+
+  // ✅ Auto-scroll to bottom on new screenshot
+  gallery.scrollTop = gallery.scrollHeight;
 }
+
 
 function formatAnalysisClean(analysis) {
   if (!analysis) return "No analysis available.";
