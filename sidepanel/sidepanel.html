@@ -472,17 +472,22 @@
         </div>
 
         <!-- features sections follow -->
-         <!-- Feature 1: Notes -->
-         <div id="notesSection" class="feature-section" style="display:block;">
-           <h3>📝 Extract Actionable Items</h3>
-           <textarea
-             id="notes"
-             rows="3"
-             placeholder="Paste or type your meeting notes here..."
-           ></textarea>
-           <button id="extractBtn">Extract Actionable Items</button>
-           <div id="output"></div>
-         </div>
+         <!-- Feature 1: Notes (Simplified - No button) -->
+<div id="notesSection" class="feature-section" style="display:block;">
+  <h3>📝 Meeting Notes</h3>
+  <p style="font-size: 13px; color: #666; margin-bottom: 12px;">
+    Take notes during your meeting. Action items are extracted automatically in the background.
+  </p>
+  <textarea
+    id="notes"
+    rows="8"
+    placeholder="Type your meeting notes here..."
+    style="min-height: 200px;"
+  ></textarea>
+  <div id="autoExtractStatus" style="margin-top: 8px; font-size: 12px; color: #666; font-style: italic;">
+    <!-- Auto-extraction status will appear here -->
+  </div>
+</div>
 
         <!-- Feature 2: Screenshots -->
         <div id="screenshotsSection" class="feature-section scrollable" style="display:none;">
