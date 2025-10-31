@@ -46,6 +46,7 @@ let textSession;
 let imageSession;
 let rewriterSession;
 let translatorSession;
+let summarySession;
 let currentMeetingId = null;
 let currentMeetTabId = null;
 let checkInterval = null;
@@ -53,6 +54,7 @@ let saveTimeout = null;
 let currentMeetingData = null;
 let analysisQueue = [];
 let isAnalyzing = false;
+let isGeneratingSummary = false;
 
 // Generation UI / cancel helpers
 let generationTimerId = null;
@@ -162,7 +164,8 @@ async function initCurrentMeeting(meetingId) {
       notes: "",
       actionables: "",
       screenshots: [],
-      captions: []
+      captions: [],
+      summary: null
     };
   }
   
@@ -670,6 +673,7 @@ function updateCaptionModeStatus() {
 // }
 // 🔧 FIXED: Process caption with simplification and translation
 async function processCaptionFromMeet(captionText) {
+  console.log("[CAPTION] processCaptionFromMeet called. isCaptionsEnabled:", isCaptionsEnabled, "currentMeetingData:", currentMeetingData);
   if (!isCaptionsEnabled || !currentMeetingData) {
     console.log("⚠️ [CAPTION] Ignoring caption (disabled or no meeting)");
     return;
@@ -847,7 +851,7 @@ async function checkMeetingStatus() {
         console.log("🔄 [CHECK] Tab ID changed:", response.tabId);
         currentMeetTabId = response.tabId;
       }
-    } else {
+    } else if (response) { // only end meeting if we get a response that says there is no meeting
       console.log("⚠️ [CHECK] No meeting detected");
       if (currentMeetingId !== null) {
         console.log("🏁 [CHECK] Ending current meeting");
@@ -959,6 +963,20 @@ async function endCurrentMeeting() {
     disableCaptions();
   }
 
+  if (currentMeetingData.captions && currentMeetingData.captions.length > 0 && !currentMeetingData.summary) {
+    console.log("📊 Auto-generating meeting summary...");
+    status.textContent = "📊 Generating meeting summary...";
+
+    try {
+      const result = await generateMeetingSummary('comprehensive');
+      if (result.success) {
+        console.log("✅ Auto-summary generated successfully");
+      }
+    } catch (err) {
+      console.error("Auto-summary failed:", err);
+    }
+  }
+
   currentMeetingData.endTime = new Date().toISOString();
   await saveMeetingData(currentMeetingId, currentMeetingData);
 
@@ -968,8 +986,106 @@ async function endCurrentMeeting() {
   notesField.value = "";
   outputDiv.textContent = "";
   gallery.innerHTML = "";
-  captionContainer.innerHTML = "";
+captionContainer.innerHTML = "";
   analysisQueue = [];
+}
+
+async function generateMeetingSummary(type = 'comprehensive', meeting = null) {
+  const meetingData = meeting || currentMeetingData;
+
+  if (!meetingData || !summarySession) {
+    console.warn("📊 [SUMMARY] Missing meeting data or summarySession:", {
+      currentMeetingDataExists: !!meetingData,
+      summarySessionExists: !!summarySession
+    });
+    return { success: false, error: "Meeting data or summary session not available" };
+  }
+
+  const captions = meetingData.captions || [];
+
+  if (captions.length === 0 && !meetingData.notes && !meetingData.screenshots) {
+    return { success: false, error: "No captions, notes or screenshots available. Please record some captions or add notes first." };
+  }
+
+  isGeneratingSummary = true;
+
+  try {
+    // Build transcript from captions (prefer simplified)
+    const transcript = captions
+      .map(c => c.simplified || c.original)
+      .join('\n');
+
+    console.log("📊 [SUMMARY] Preparing prompt — captions:", captions.length, "transcript length:", transcript.length);
+
+    // Collect screenshots analyses
+    const screenshotSummaries = (meetingData.screenshots || [])
+      .map((ss, i) => {
+        const t = ss.timestamp ? `Time: ${new Date(ss.timestamp).toLocaleString()}` : `Screenshot ${i+1}`;
+        const analysis = ss.analysis ? ss.analysis : 'No analysis available';
+        return `- ${t}\n${analysis}`;
+      }).join('\n\n');
+
+    // Gather notes and actionables
+    const notes = meetingData.notes || "No notes provided.";
+    const actionables = meetingData.actionables || "No explicit action items recorded.";
+
+    const prompt = `Summarize the following meeting transcript and analysis. Provide a short summary of the key discussion points, decisions, and action items.    
+    Meeting Notes:
+    ${notes}
+    
+    Action Items:
+    ${actionables}
+    
+    Transcript:
+    ${transcript}
+    
+    Screenshot Analysis:
+    ${screenshotSummaries}
+    `;
+
+    console.log("📊 [SUMMARY] Prompt length:", prompt.length);
+
+    let summaryText = "";
+
+    try {
+        summaryText = await summarySession.rewrite(prompt, {
+            tone: "formal",
+            length: "summary"
+        });
+    } catch (err) {
+        console.error("❌ [SUMMARY] Rewriter failed:", err);
+        isGeneratingSummary = false;
+        return { success: false, error: err && err.message ? err.message : String(err) };
+    }
+
+
+    // sanity check
+    if (!summaryText || summaryText.trim().length < 10) {
+      console.warn("⚠️ [SUMMARY] Normalized summary too short:", summaryText);
+      isGeneratingSummary = false;
+      return { success: false, error: "AI returned an empty or too-short response. Check DevTools console for raw output." };
+    }
+
+    const summaryData = {
+      type: type,
+      content: summaryText,
+      generatedAt: new Date().toISOString(),
+      captionCount: captions.length,
+      transcriptLength: transcript.length
+    };
+
+    meetingData.summary = summaryData;
+    await saveMeetingData(meetingData.meetingId, meetingData);
+
+    isGeneratingSummary = false;
+    console.log("✅ [SUMMARY] Saved summary, length:", summaryText.length);
+    return { success: true, summary: summaryData };
+
+  } catch (err) {
+    console.error("❌ [SUMMARY] Generation error:", err);
+    isGeneratingSummary = false;
+    return { success: false, error: err && err.message ? err.message : String(err) };
+  }
 }
 
 function showWaitingState() {
@@ -1018,6 +1134,19 @@ async function initSessions() {
       console.error("❌ Failed to create image session:", imgErr);
       imageSession = null;
       status.textContent = "⚠️ Screenshot analysis unavailable";
+    }
+
+    // Summary session
+    console.log("📊 [INIT] Creating summary session...");
+    try {
+        summarySession = await Rewriter.create({
+            tone: "formal",
+            length: "summary"
+        });
+        console.log("✅ Summary session ready");
+    } catch (err) {
+        console.warn("⚠️ Summary session not available:", err);
+        summarySession = null;
     }
 
     // 🔧 NEW: Rewriter API for caption simplification
@@ -1133,6 +1262,23 @@ async function loadPastMeetings() {
   meetings.forEach(meeting => {
     const card = createMeetingCard(meeting);
     pastMeetingsList.appendChild(card);
+
+    if (!meeting.summary && meeting.endTime) {
+      const summaryInterval = setInterval(async () => {
+        const updatedMeeting = await getMeetingData(meeting.meetingId);
+        if (updatedMeeting && updatedMeeting.summary) {
+          const summarySection = document.getElementById(`summary-section-${meeting.meetingId}`);
+          if (summarySection) {
+            summarySection.innerHTML = `
+              <h4>📊 Meeting Summary</h4>
+              <div class="summary-badge">${updatedMeeting.summary.type} • ${new Date(updatedMeeting.summary.generatedAt).toLocaleString()}</div>
+              <div class="detail-content summary-content">${updatedMeeting.summary.content}</div>
+            `;
+          }
+          clearInterval(summaryInterval);
+        }
+      }, 2000);
+    }
   });
 }
 
@@ -1272,7 +1418,7 @@ function cleanScreenshotAnalysis(analysis) {
     .trim();
   
   // If it's a paragraph, convert to bullet points
-  const sentences = cleaned.split(/[.!?]+/).filter(s => s.trim());
+  const sentences = cleaned.split(/[.!?]+/ ).filter(s => s.trim());
   if (sentences.length > 1) {
     return sentences.map(s => `• ${s.trim()}`).join('\n');
   }
@@ -1384,6 +1530,19 @@ function createMeetingCard(meeting) {
           </div>
         </div>
       ` : ''}
+
+      ${meeting.summary ? `
+        <div class="detail-section summary-section">
+          <h4>📊 Meeting Summary</h4>
+          <div class="summary-badge">${meeting.summary.type} • ${new Date(meeting.summary.generatedAt).toLocaleString()}</div>
+          <div class="detail-content summary-content">${meeting.summary.content}</div>
+        </div>
+      ` : (meeting.endTime ? `
+        <div class="detail-section summary-section" id="summary-section-${meeting.meetingId}">
+          <h4>📊 Meeting Summary</h4>
+          <div class="detail-content summary-content"><div class="summary-generating">Generating summary...</div></div>
+        </div>
+      ` : '')}
     </div>
   `;
   const markdownBtn = card.querySelector(".export-markdown-btn");
@@ -1427,9 +1586,54 @@ function createMeetingCard(meeting) {
     
     const details = card.querySelector(".meeting-details");
     details.classList.toggle("expanded");
+
+    if (details.classList.contains("expanded") && !meeting.summary && meeting.endTime) {
+      generateSummaryForMeeting(meeting.meetingId);
+    }
   });
   
   return card;
+}
+
+async function generateSummaryForMeeting(meetingId) {
+  const summarySection = document.getElementById(`summary-section-${meetingId}`);
+  if (!summarySection) return;
+
+  const summaryContent = summarySection.querySelector('.summary-content');
+
+  try {
+    summaryContent.innerHTML = `<div class="summary-generating">Generating summary...</div>`;
+
+    const meeting = await getMeetingData(meetingId);
+    if (!meeting) {
+      throw new Error('Meeting data not found');
+    }
+
+    if (meeting.summary) {
+      summaryContent.innerHTML = meeting.summary.content;
+      return;
+    }
+
+    const result = await generateMeetingSummary('comprehensive', meeting);
+
+    if (result.success) {
+      const updatedMeeting = await getMeetingData(meetingId);
+      summaryContent.innerHTML = updatedMeeting.summary.content;
+    } else {
+      throw new Error(result.error || 'Summary generation failed');
+    }
+
+  } catch (err) {
+    console.error(`❌ Failed to generate summary for ${meetingId}:`, err);
+    summaryContent.innerHTML = `<div style="color: #d93025;">⚠️ Summary generation failed: ${err.message}</div>`;
+  }
+}
+
+function openModalFromHistory(screenshot) {
+  if (!screenshot) return;
+  modalImage.src = screenshot.dataUri;
+  modalAnalysis.textContent = screenshot.analysis || "No analysis available.";
+  modal.style.display = "flex";
 }
 
 // Export meeting as Markdown
@@ -1446,7 +1650,7 @@ async function exportMeetingAsMarkdown(meeting) {
   markdown += `**Date:** ${startDate.toLocaleDateString()} at ${startDate.toLocaleTimeString()}\n`;
   markdown += `**Duration:** ${duration}\n`;
   markdown += `**Status:** ${endDate ? "Completed" : "Ongoing"}\n\n`;
-  markdown += `---\n\n`;
+  markdown += `--- ---\n\n`;
 
   if (meeting.notes) {
     markdown += `## 📝 Meeting Notes\n\n`;
@@ -1475,12 +1679,13 @@ async function exportMeetingAsMarkdown(meeting) {
       if (ss.analysis) {
         markdown += `**Analysis:**\n${ss.analysis}\n\n`;
       }
-      markdown += `---\n\n`;
+      markdown += `--- ---\n\n`;
     });
   }
 
   markdown += `\n\n---\n`;
-  markdown += `*Exported from MeetMate on ${new Date().toLocaleString()}*\n`;
+  markdown += `*Exported from MeetMate on ${new Date().toLocaleString()}*
+`;
 
   try {
     await navigator.clipboard.writeText(markdown);
@@ -1676,7 +1881,7 @@ console.log("🤖 [INIT] Starting AI sessions...");
 initSessions();
 
 console.log("⏰ [INIT] Setting up polling interval (2s)...");
-checkInterval = setInterval(checkMeetingStatus, 2000);
+checkInterval = setInterval(checkMeetingStatus, 5000);
 
 console.log("=== ✅ INITIALIZATION COMPLETE ===");
 
