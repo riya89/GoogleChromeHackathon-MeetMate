@@ -2,7 +2,8 @@
 
 MeetMate is a Chrome extension that lives inside Google Meet, providing real-time AI assistance during meetings using Chrome's Built-in AI APIs. All processing happens locally on your device for maximum privacy and zero API costs.
 
-**Built for:** [Google Chrome Built-in AI Challenge 2025](https://googlechromeai.devpost.com/](https://googlechromeai2025.devpost.com/)
+**Built for:** [Google Chrome Built-in AI Challenge 2025](https://googlechromeai2025.devpost.com/)
+
 ---
 
 ## Features
