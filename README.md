@@ -206,6 +206,12 @@ If you find MeetMate helpful, please give it a ⭐ on GitHub!
 
 ---
 
+## 📜 License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
 **Built with ❤️ for the Google Chrome Built-in AI Challenge 2025**
 
 *Tagline: "Never miss a detail, action item, or slide again"*
