@@ -177,7 +177,7 @@ meetmate/
 
 ## 📜 License
 
-Feel free to use this project for learning or commercial purposes.
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
@@ -203,12 +203,6 @@ Feel free to use this project for learning or commercial purposes.
 ## 🌟 Star History
 
 If you find MeetMate helpful, please give it a ⭐ on GitHub!
-
----
-
-## 📜 License
-
-This project is licensed under the [MIT License](LICENSE).
 
 ---
 
