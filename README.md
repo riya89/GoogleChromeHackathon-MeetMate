@@ -18,10 +18,10 @@ MeetMate is a Chrome extension that lives inside Google Meet, providing real-tim
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Chrome Built-in AI APIs Used:
-- **Prompt API (text)** - Action item extraction, meeting summaries
+- **Prompt API ** - Action item extraction, meeting summaries
 - **Prompt API (multimodal - images)** - Screenshot analysis, slide content extraction
 - **Summarizer API** - Condensing meeting notes into summaries
 - **Writer API** - Generating professional follow-up emails
