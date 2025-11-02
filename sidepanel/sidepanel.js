@@ -644,101 +644,6 @@ function updateCaptionModeStatus() {
     statusDiv.style.fontWeight = "600";
   }
 }
-// function updateCaptionModeStatus() {
-//   const modes = [];
-  
-//   if (captionSimplificationEnabled) {
-//     modes.push("✨ Simplified");
-//   }
-  
-//   if (translationEnabled) {
-//     const langNames = {
-//       'hi': 'Hindi',
-//       'es': 'Spanish',
-//       'fr': 'French',
-//       'de': 'German',
-//       'ja': 'Japanese',
-//       'zh': 'Chinese',
-//       'ar': 'Arabic',
-//       'pt': 'Portuguese'
-//     };
-//     modes.push(`🌐 ${langNames[selectedLanguage] || selectedLanguage}`);
-//   }
-
-//   if (modes.length > 0) {
-//     captionModeStatus.textContent = `Active: ${modes.join(' + ')}`;
-//     captionModeStatus.style.color = "#34a853";
-//   } else {
-//     captionModeStatus.textContent = "Raw captions only";
-//     captionModeStatus.style.color = "#666";
-//   }
-// }
-
-// 🔧 UPDATED: Process caption with simplification and translation
-// async function processCaptionFromMeet(captionText) {
-//   if (!isCaptionsEnabled || !currentMeetingData) {
-//     console.log("⚠️ [CAPTION] Ignoring caption (disabled or no meeting)");
-//     return;
-//   }
-
-//   // Avoid duplicates
-//   if (captionText === lastCaptionText) {
-//     console.log("⚠️ [CAPTION] Duplicate caption ignored");
-//     return;
-//   }
-//   lastCaptionText = captionText;
-
-//   console.log("📝 [CAPTION] Processing caption:", captionText);
-
-//   let simplifiedText = captionText;
-//   let translatedText = null;
-
-//   // Step 1: Simplify if enabled
-//   if (captionSimplificationEnabled && rewriterSession) {
-//     try {
-//       console.log("✨ [CAPTION] Simplifying with Rewriter API...");
-
-//       // Use Rewriter API for simplification
-//       simplifiedText = await rewriterSession.rewrite(captionText, {
-//         context: "Make this meeting caption clearer and more concise while keeping all important information.",
-//         tone: "more-casual"
-//       });
-
-//       console.log("✅ [CAPTION] Simplified:", simplifiedText);
-//     } catch (err) {
-//       console.error("❌ [CAPTION] Simplification failed:", err);
-//       simplifiedText = captionText;
-//     }
-//   }
-
-//   if (translationEnabled) {
-//   if (!selectedLanguage) {
-//     console.warn("🌐 [CAPTION] No target language selected - skipping translation");
-//     translatedText = null;
-//   } else if (translatorSession && typeof translatorSession.translate === 'function') {
-//     try {
-//       console.log("🌐 [CAPTION] Translating to", selectedLanguage, "...");
-//       // Prefer explicit target language if API accepts options
-//       translatedText = await translatorSession.translate(simplifiedText, { targetLanguage: selectedLanguage });
-//       // If the translator API doesn't accept options, fall back to single-arg call
-//       if (!translatedText) {
-//         translatedText = await translatorSession.translate(simplifiedText);
-//       }
-//       console.log("✅ [CAPTION] Translated:", translatedText);
-//     } catch (err) {
-//       console.error("❌ [CAPTION] Translation failed:", err);
-//       translatedText = null;
-//     }
-//   } else {
-//     console.warn("⚠️ [CAPTION] Translator session unavailable - skipping translation");
-//     translatedText = null;
-//   }
-// }
-
-//   // Add to UI and storage
-//   await addCaption(captionText, simplifiedText, translatedText);
-// }
-// 🔧 FIXED: Process caption with simplification and translation
 async function processCaptionFromMeet(captionText) {
   console.log("[CAPTION] processCaptionFromMeet called. isCaptionsEnabled:", isCaptionsEnabled, "currentMeetingData:", currentMeetingData);
   if (!isCaptionsEnabled || !currentMeetingData) {
@@ -852,54 +757,6 @@ async function addCaption(originalText, simplifiedText, translatedText = null) {
   captionContainer.appendChild(entry);
   captionContainer.scrollTop = captionContainer.scrollHeight;
 }
-// // 🔧 UPDATED: Add caption with translation support
-// async function addCaption(originalText, simplifiedText, translatedText = null) {
-//   if (!currentMeetingData) return;
-  
-//   const caption = {
-//     timestamp: new Date().toISOString(),
-//     original: originalText,
-//     simplified: simplifiedText,
-//     translated: translatedText
-//   };
-  
-//   currentMeetingData.captions.push(caption);
-//   await saveCurrentMeeting();
-  
-//   const entry = document.createElement("div");
-//   entry.className = "caption-entry";
-  
-//   const timestamp = document.createElement("div");
-//   timestamp.className = "caption-timestamp";
-//   timestamp.textContent = new Date(caption.timestamp).toLocaleTimeString();
-  
-//   entry.appendChild(timestamp);
-  
-//   // Show original if different from simplified
-//   if (originalText && originalText !== simplifiedText) {
-//     const original = document.createElement("div");
-//     original.className = "caption-original";
-//     original.textContent = `Original: ${originalText}`;
-//     entry.appendChild(original);
-//   }
-  
-//   // Show simplified version
-//   const simplified = document.createElement("div");
-//   simplified.className = "caption-simplified";
-//   simplified.textContent = simplifiedText;
-//   entry.appendChild(simplified);
-  
-//   // Show translation if available
-//   if (translatedText) {
-//     const translated = document.createElement("div");
-//     translated.className = "caption-translated";
-//     translated.textContent = `🌐 ${translatedText}`;
-//     entry.appendChild(translated);
-//   }
-  
-//   captionContainer.appendChild(entry);
-//   captionContainer.scrollTop = captionContainer.scrollHeight;
-// }
 
 // Check for meeting ID
 async function checkMeetingStatus() {
@@ -941,24 +798,6 @@ chrome.runtime.onMessage.addListener((message) => {
     processCaptionFromMeet(message.caption.text);
   }
 });
-
-// async function activateMeeting(meetingId, tabId) {
-//   console.log("🎯 [ACTIVATE] Activating meeting:", meetingId);
-
-//   currentMeetingId = meetingId;
-//   currentMeetTabId = tabId;
-
-//   meetingIdDisplay.innerHTML = `📋 Meeting ID: <strong>${meetingId}</strong>`;
-//   waitingMessage.style.display = "none";
-//   featuresContainer.style.display = "flex";
-
-//   await initCurrentMeeting(meetingId);
-
-//   const storageInfo = await getStorageUsage();
-//   console.log(`💾 [ACTIVATE] Storage: ${storageInfo.percentage}% used`);
-
-//   console.log("✅ [ACTIVATE] Meeting activated successfully!");
-// }
 async function activateMeeting(meetingId, tabId) {
   console.log("🎯 [ACTIVATE] Activating meeting:", meetingId);
 
@@ -1237,11 +1076,6 @@ async function initSessions() {
     status.textContent = "❌ Prompt API not supported. Enable chrome://flags → #prompt-api-for-gemini-nano";
   }
 }
-// startCaptionBtn.addEventListener("click", enableCaptions);
-// stopCaptionBtn.addEventListener("click", disableCaptions);
-// simplifyToggle.addEventListener("click", toggleSimplification);
-// translateToggle.addEventListener("click", toggleTranslation);
-// languageSelect.addEventListener("change", (e) => changeLanguage(e.target.value));
 if (startCaptionBtn) startCaptionBtn.addEventListener("click", enableCaptions);
 if (stopCaptionBtn) stopCaptionBtn.addEventListener("click", disableCaptions);
 if (simplifyToggle) simplifyToggle.addEventListener("click", toggleSimplification);
@@ -1325,112 +1159,6 @@ async function loadPastMeetings() {
     }
   });
 }
-
-// function createMeetingCard(meeting) {
-//   const card = document.createElement("div");
-//   card.className = "meeting-card";
-
-//   const startDate = new Date(meeting.startTime);
-//   const dateStr = startDate.toLocaleDateString();
-//   const timeStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-//   const duration = meeting.endTime
-//     ? Math.round((new Date(meeting.endTime) - new Date(meeting.startTime)) / 60000)
-//     : "Ongoing";
-
-//   card.innerHTML = `
-//     <div class="meeting-card-header">
-//       <span class="meeting-id-badge">${meeting.meetingId}</span>
-//       <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-//         <span class="meeting-time">${dateStr} at ${timeStr}</span>
-//         <button class="export-markdown-btn" data-meeting-id="${meeting.meetingId}"
-//           style="background: #34a853; padding: 4px 10px; font-size: 12px; border-radius: 4px;"
-//           title="Copy as Markdown">
-//           📋 Markdown
-//         </button>
-//         <button class="export-pdf-btn" data-meeting-id="${meeting.meetingId}"
-//           style="background: #ea4335; padding: 4px 10px; font-size: 12px; border-radius: 4px;"
-//           title="Export as PDF">
-//           📄 PDF
-//         </button>
-//         <button class="delete-meeting-btn" data-meeting-id="${meeting.meetingId}"
-//           style="background: #d93025; padding: 4px 10px; font-size: 12px; border-radius: 4px;">
-//           🗑️ Delete
-//         </button>
-//       </div>
-//     </div>
-//     <div class="meeting-stats">
-//       <span>⏱️ ${duration !== "Ongoing" ? duration + " min" : duration}</span>
-//       <span>📝 ${meeting.notes ? "Has notes" : "No notes"}</span>
-//       <span>📸 ${meeting.screenshots.length} screenshots</span>
-//       <span>🎤 ${meeting.captions ? meeting.captions.length : 0} captions</span>
-//     </div>
-//     <div class="meeting-details">
-//       ${meeting.notes ? `
-//         <div class="detail-section">
-//           <h4>📝 Notes</h4>
-//           <div class="detail-content">${meeting.notes}</div>
-//         </div>
-//       ` : ''}
-      
-//       ${meeting.actionables ? `
-//         <div class="detail-section">
-//           <h4>✅ Actionables</h4>
-//           <div class="detail-content">${meeting.actionables}</div>
-//         </div>
-//       ` : ''}
-
-//       ${meeting.summary ? `
-//         <div class="detail-section">
-//           <h4>📊 Meeting Summary (${meeting.summary.type})</h4>
-//           <div class="detail-content" style="white-space: pre-wrap;">${meeting.summary.content}</div>
-//           <div style="font-size: 11px; color: #666; margin-top: 8px;">
-//             Generated: ${new Date(meeting.summary.generatedAt).toLocaleString()} |
-//             Based on ${meeting.summary.captionCount} captions
-//           </div>
-//         </div>
-//       ` : ''}
-
-//       ${meeting.captions && meeting.captions.length > 0 ? `
-//         <div class="detail-section">
-//           <h4>🎤 Live Captions (${meeting.captions.length})</h4>
-//           <div class="detail-content">
-//             ${meeting.captions.map(c => `
-//               <div style="margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #e0e0e0;">
-//                 <div style="font-size: 10px; color: #999; margin-bottom: 6px; font-weight: 600;">${new Date(c.timestamp).toLocaleTimeString()}</div>
-//                 ${c.original && c.original !== c.simplified ? `
-//                   <div style="font-size: 11px; color: #999; margin-bottom: 6px; font-style: italic;">${c.original}</div>
-//                 ` : ''}
-//                 <div style="font-size: 13px; color: #333; line-height: 1.5; font-weight: 500;">${c.simplified}</div>
-//                 ${c.translated ? `
-//                   <div style="font-size: 13px; color: #1a73e8; margin-top: 6px; padding-top: 6px; border-top: 1px solid #e8f0fe;">
-//                     🌐 ${c.translated}
-//                   </div>
-//                 ` : ''}
-//               </div>
-//             `).join('')}
-//           </div>
-//         </div>
-//       ` : ''}
-      
-//       ${meeting.screenshots.length > 0 ? `
-//         <div class="detail-section">
-//           <h4>📸 Screenshots & Analysis (${meeting.screenshots.length})</h4>
-//           <div>
-//             ${meeting.screenshots.map((ss, idx) => `
-//               <div style="display: flex; gap: 12px; margin-bottom: 16px; padding: 12px; background: #f5f5f5; border-radius: 6px;">
-//                 <img src="${ss.dataUri}" class="screenshot-thumb" data-index="${idx}" style="width: 150px; height: 100px; object-fit: cover;">
-//                 <div style="flex: 1;">
-//                   <div style="font-size: 11px; color: #666; margin-bottom: 4px;">${new Date(ss.timestamp).toLocaleString()}</div>
-//                   <div style="font-size: 13px; line-height: 1.4;">${ss.analysis || 'No analysis available'}</div>
-//                 </div>
-//               </div>
-//             `).join('')}
-//           </div>
-//         </div>
-//       ` : ''}
-//     </div>
-//   `;
   function cleanText(text) {
   if (!text) return '';
   return text
@@ -1950,44 +1678,6 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) checkMeetingStatus();
 });
 
-// // Feature 1: Extract actionable items
-// extractBtn.addEventListener("click", async () => {
-//   if (!currentMeetingId) {
-//     outputDiv.textContent = "⚠️ No active meeting. Please join a meeting first.";
-//     return;
-//   }
-
-//   if (!textSession) {
-//     outputDiv.textContent = "⚠️ Session not ready. Please wait...";
-//     return;
-//   }
-
-//   const text = notesField.value.trim();
-//   if (!text) {
-//     outputDiv.textContent = "Please enter meeting notes.";
-//     return;
-//   }
-
-//   outputDiv.textContent = "⏳ Extracting actionable items...";
-//   try {
-//     const result = await textSession.prompt(
-//       `Extract actionable tasks and follow-up points from these meeting notes:\n\n${text}`
-//     );
-//     outputDiv.textContent = result;
-    
-//     currentMeetingData.actionables = result;
-//     await saveCurrentMeeting();
-    
-//     console.log("📝 Extracted items for meeting:", currentMeetingId);
-//   } catch (err) {
-//     console.error(err);
-//     outputDiv.textContent = `⚠️ Failed to extract items: ${err.message}`;
-    
-//     if (err.message.includes("QUOTA_BYTES")) {
-//       await handleStorageQuotaExceeded();
-//     }
-//   }
-// });
 // Auto-extraction state
 let autoExtractTimeout = null;
 let lastExtractedText = "";
@@ -2091,40 +1781,6 @@ async function autoExtractActionables(text) {
   }
 }
 
-// // Optional: Add a manual trigger if user wants to force extraction
-// // You can keep this hidden or make it subtle
-// function addManualExtractButton() {
-//   const notesSection = document.getElementById('notesSection');
-//   if (!notesSection) return;
-  
-//   const manualBtn = document.createElement('button');
-//   manualBtn.textContent = "🔄 Extract Now";
-//   manualBtn.style.cssText = `
-//     margin-top: 8px;
-//     padding: 6px 12px;
-//     font-size: 12px;
-//     background: #f5f7fb;
-//     color: #5f6368;
-//     border: 1px solid #e0e0e0;
-//   `;
-  
-//   manualBtn.addEventListener('click', async () => {
-//     const text = notesField.value.trim();
-//     if (text && currentMeetingId && textSession) {
-//       await autoExtractActionables(text);
-//     }
-//   });
-  
-//   // Insert after the status div
-//   const statusDiv = document.getElementById('autoExtractStatus');
-//   if (statusDiv && statusDiv.parentNode) {
-//     statusDiv.parentNode.insertBefore(manualBtn, statusDiv.nextSibling);
-//   }
-// }
-
-// // Call this after DOM is ready if you want the manual button
-// // addManualExtractButton();
-// Feature 2: Capture Screenshot
 captureBtn.addEventListener("click", async () => {
   if (!currentMeetingId) {
     status.textContent = "⚠️ No active meeting. Please join a meeting first.";
