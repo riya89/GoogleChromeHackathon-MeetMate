@@ -6,11 +6,11 @@ let captionObserver = null;
 
 // Google Meet caption selectors (these may need updating if Meet changes)
 const CAPTION_SELECTORS = [
-  '[jsname="dsyhDe"]',           // Primary caption container
-  '.iOzk7',                       // Caption text container
-  '.a4cQT',                       // Alternative caption class
-  '[data-unresolved-comms-id]',  // Another caption element
-  '.VbkSUe',                      // Older caption format
+  '[jsname="dsyhDe"]',           
+  '.iOzk7',                       
+  '.a4cQT',                       
+  '[data-unresolved-comms-id]',  
+  '.VbkSUe',                      
 ];
 
 // Find the caption container
@@ -30,7 +30,6 @@ function findCaptionContainer() {
 function extractCaptionText(element) {
   if (!element) return null;
 
-  // Try to get text from the element
   const text = element.innerText || element.textContent;
   return text ? text.trim() : null;
 }
@@ -44,7 +43,6 @@ function sendCaption(captionText) {
   console.log("📝 New caption detected:", captionText);
   lastCaptionText = captionText;
 
-  // Send to side panel
   chrome.runtime.sendMessage({
     action: "newCaption",
     caption: {
@@ -86,24 +84,20 @@ function startCaptionMonitoring() {
 
   console.log("✅ Caption monitoring started!");
 
-  // Also check periodically in case the observer misses something
   setInterval(() => {
     const captionText = extractCaptionText(captionContainer);
     if (captionText) {
       sendCaption(captionText);
     }
-  }, 500); // Check every 500ms
+  }, 500);
 }
 
-// Wait for page to load, then start monitoring
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', startCaptionMonitoring);
 } else {
-  // Start immediately if page already loaded
   setTimeout(startCaptionMonitoring, 2000); // Give Meet time to initialize
 }
 
-// Clean up on page unload
 window.addEventListener('beforeunload', () => {
   if (captionObserver) {
     captionObserver.disconnect();

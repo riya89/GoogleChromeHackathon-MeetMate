@@ -43,7 +43,6 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     } catch (err) {
       console.warn("⚠️ Could not auto-open side panel:", err);
 
-      // Inject floating icon if side panel can't open automatically
       try {
         await chrome.scripting.executeScript({
           target: { tabId },
@@ -140,7 +139,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const urlMeetingId = extractMeetingId(tabs[0].url);
         const meetingId = storedMeetingId || urlMeetingId;
 
-        // Update stored ID if found in URL
         if (urlMeetingId && !storedMeetingId) {
           meetingTabs.set(tabId, urlMeetingId);
         }
@@ -153,19 +151,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ meetingId: null, tabId: null });
       }
     });
-    return true; // Keep channel open for async response
+    return true; 
   }
 
   // Handle new captions from content script
   if (message.action === "newCaption") {
     console.log("📝 Caption received from content script:", message.caption.text);
 
-    // Forward to side panel
     chrome.runtime.sendMessage({
       action: "captionFromMeet",
       caption: message.caption
     }).catch(err => {
-      // Side panel might not be open, that's OK
       console.log("Side panel not available:", err.message);
     });
 
